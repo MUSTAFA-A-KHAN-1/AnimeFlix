@@ -2390,7 +2390,7 @@ body {
 /* Subtitle Container */
 .subtitle-container {
   position: absolute;
-  bottom: 60px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
   width: 80%;
@@ -2400,16 +2400,48 @@ body {
   z-index: 15;
 }
 
+/* Subtitle offset variable for dynamic adjustment */
+.subtitle-offset {
+  --subtitle-vertical-offset: 0px;
+  bottom: calc(100px + var(--subtitle-vertical-offset)) !important;
+}
+
+/* Subtitle position classes */
+.subtitle-position-top {
+  top: 80px !important;
+  bottom: auto !important;
+}
+
+.subtitle-position-middle {
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.subtitle-position-bottom {
+  top: auto !important;
+  bottom: 100px !important;
+  transform: translateX(-50%) !important;
+}
+
+/* Enhanced subtitle text with better visibility */
 .subtitle-text {
   display: inline-block;
-  padding: 8px 20px;
-  background: rgba(0, 0, 0, 0.8);
+  padding: 10px 24px;
+  background: rgba(0, 0, 0, 0.85);
   color: #fff;
   font-size: 24px;
+  font-weight: 600;
   line-height: 1.4;
-  border-radius: 4px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  border-radius: 6px;
+  text-shadow: 
+    2px 2px 4px rgba(0, 0, 0, 0.9),
+    -1px -1px 0 rgba(0, 0, 0, 0.5),
+    1px -1px 0 rgba(0, 0, 0, 0.5),
+    -1px 1px 0 rgba(0, 0, 0, 0.5),
+    1px 1px 0 rgba(0, 0, 0, 0.5);
   transition: all 0.15s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
 /* Subtitle customization classes */

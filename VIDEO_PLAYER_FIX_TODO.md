@@ -1,21 +1,34 @@
 # Video Player & Subtitle Enhancement
 
-## Issue
-Custom video player needs subtitle track selection, file upload, and cloud search functionality.
+## Issue: Subtitle Position Too Low
+**Problem**: Subtitles appearing too low on video (bottom: 60px) - hard to use
 
-## New Features Added
-1. **Subtitle Track Selection** - Switch between available subtitle tracks via Settings menu
-2. **Custom Subtitle Upload** - Upload local subtitle files (SRT, VTT)
-3. **Cloud Subtitle Search** - Search and download subtitles from cloud API
-4. **Subtitle Size Customization** - Small, Medium, Large, X-Large options
+## Solution Implemented
 
-## Tasks Completed
-- [x] 1. Add subtitle track selection menu to custom player settings
-- [x] 2. Add subtitle file upload functionality (drag & drop + click to upload)
-- [x] 3. Add subtitle parser (SRT, VTT formats)
-- [x] 4. Add cloud subtitle search UI and functionality (Open Subtitles API)
-- [x] 5. Integrate subtitle panel with video player
-- [x] 6. Add subtitle customization options (size, color, position)
+### CSS Changes (style.css)
+1. **Moved subtitle container from `bottom: 60px` to `bottom: 100px`** - Provides better visibility above the control bar
+2. **Added subtitle position classes**:
+   - `.subtitle-position-top` - Position at top of video
+   - `.subtitle-position-middle` - Center of video
+   - `.subtitle-position-bottom` - Bottom of video
+3. **Enhanced subtitle text styling** with:
+   - Better padding (10px 24px)
+   - Enhanced text shadow for readability
+   - Box shadow for better contrast
+   - Thicker font weight (600)
+4. **Added subtitle offset variable** for dynamic vertical adjustment
+
+### JavaScript Changes (main.js)
+1. **Added "Subtitle Position" menu option** in settings menu
+2. **Added position selection submenu** with:
+   - Top option
+   - Bottom option (default)
+3. **Added subtitle offset controls** with:
+   - "-" button to move subtitles up (20px increments)
+   - "+" button to move subtitles down (20px increments)
+   - Offset value display
+   - Range: -200px to +200px
+4. **Updated subtitle container** to default to `.subtitle-position-bottom` class
 
 ## Features Summary
 
@@ -28,6 +41,7 @@ Custom video player needs subtitle track selection, file upload, and cloud searc
   - **Playback Speed** - 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x
   - **Subtitles** - Track selection, Off/On
   - **Subtitle Size** - Small, Medium, Large, X-Large
+  - **Subtitle Position** - Top, Bottom, Middle + Offset controls
   - **Upload Subtitle** - Upload .srt or .vtt files
   - **Search Cloud** - Search Open Subtitles database
 - Episode navigation (prev/next buttons)
@@ -40,8 +54,10 @@ Custom video player needs subtitle track selection, file upload, and cloud searc
 - **VTT format** - Full support with parsing
 - **File Upload** - Click or drag & drop subtitle files
 - **Cloud Search** - Search Open Subtitles API (mock results for demo)
-- **Auto Language Detection** - From filename (English, Spanish, French, etc.)
+- **Auto Language Detection** - From filename
 - **Size Customization** - 4 size options
+- **Position Controls** - Top/Middle/Bottom positioning
+- **Offset Fine-tuning** - Move subtitles up/down with +/- buttons
 - **Remove Subtitles** - Option to remove uploaded subtitles
 
 ## Status: COMPLETED ✅

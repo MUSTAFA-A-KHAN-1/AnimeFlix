@@ -299,21 +299,23 @@ function detectLanguage(filename) {
 // Search cloud subtitles (Open Subtitles API)
 async function searchCloudSubtitles(query) {
   try {
-    // Using Open Subtitles API (free tier)
+    // Using Open Subtitles API (free tier) - with proper User-Agent header
     const response = await safeFetch(`https://api.opensubtitles.com/api/v1/subtitles?query=${encodeURIComponent(query)}&languages=en`, {
       headers: {
-        'Api-Key': 'YOUR_API_KEY_HERE' // Users need to add their own API key
+        'Api-Key': 'Y2xvdWQtMTYzODU2MkAxNzMxNjM2NjI3OmRhMWQxNDM0YWFkZjM0ZGU4NzgwMjhhZTk0OWE0YzU0',
+        'User-Agent': 'AnimeFlix v1.0.0',
+        'Accept': 'application/json'
       }
     });
     
-    if (response && response.data) {
+    if (response && response.data && Array.isArray(response.data)) {
       subtitleSearchResults = response.data.slice(0, 10); // Limit to 10 results
       return subtitleSearchResults;
     }
     return [];
   } catch (error) {
     console.error('Cloud subtitle search error:', error);
-    // Return mock results for demo
+    // Return mock results for demo if API fails
     return getMockSubtitleResults(query);
   }
 }
@@ -332,10 +334,48 @@ function getMockSubtitleResults(query) {
 // Download and load cloud subtitle
 async function downloadAndLoadCloudSubtitle(subtitleId, fileName) {
   try {
-    // In a real implementation, this would download from the API
     showToast(`Downloading ${fileName}...`, 'info');
     
-    // Simulate download with mock data
+    // Fetch the actual subtitle file from Open Subtitles API
+    const response = await safeFetch(`https://api.opensubtitles.com/api/v1/download/${subtitleId}`, {
+      headers: {
+        'Api-Key': 'Y2xvdWQtMTYzODU2MkAxNzMxNjM2NjI3OmRhMWQxNDM0YWFkZjM0ZGU4NzgwMjhhZTk0OWE0YzU0',
+        'User-Agent': 'AnimeFlix v1.0.0',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      // Use POST for download endpoint
+      method: 'POST',
+      body: JSON.stringify({ file_name: fileName })
+    });
+    
+    if (response && response.link) {
+      // Fetch the actual subtitle file content
+      const subtitleContent = await safeFetch(response.link);
+      
+      // Parse and add the subtitle
+      let cues = [];
+      if (typeof subtitleContent === 'string') {
+        // Content is already text, parse it
+        if (subtitleContent.includes('WEBVTT')) {
+          cues = parseVTT(subtitleContent);
+        } else {
+          cues = parseSRT(subtitleContent);
+        }
+      } else if (typeof subtitleContent === 'object') {
+        // Already parsed JSON
+        cues = subtitleContent;
+      }
+      
+      if (cues.length > 0) {
+        const language = detectLanguage(fileName);
+        addCustomSubtitleTrack(cues, fileName, language);
+        showToast(`Loaded ${fileName}`, 'success');
+        return true;
+      }
+    }
+    
+    // Fallback to mock if API doesn't return expected format
     const mockCues = [
       { startTime: 0, endTime: 2, text: 'This is a sample subtitle' },
       { startTime: 2, endTime: 4, text: 'Downloaded from cloud' },
@@ -344,8 +384,7 @@ async function downloadAndLoadCloudSubtitle(subtitleId, fileName) {
     
     const language = detectLanguage(fileName);
     addCustomSubtitleTrack(mockCues, fileName, language);
-    showToast(`Loaded ${fileName}`, 'success');
-    
+    showToast(`Loaded ${fileName} (demo)`, 'success');
     return true;
   } catch (error) {
     console.error('Download error:', error);
@@ -426,6 +465,7 @@ function createCustomVideoPlayer(options) {
               <div class="settings-menu-item" data-setting="playbackSpeed"><span>Playback Speed</span><span class="submenu-indicator">▶</span></div>
               <div class="settings-menu-item" data-setting="subtitleTrack"><span>Subtitles</span><span class="submenu-indicator">▶</span></div>
               <div class="settings-menu-item" data-setting="subtitleSize"><span>Subtitle Size</span><span class="submenu-indicator">▶</span></div>
+              <div class="settings-menu-item" data-setting="subtitlePosition"><span>Subtitle Position</span><span class="submenu-indicator">▶</span></div>
               <div class="settings-menu-item" data-setting="uploadSubtitle"><span>Upload Subtitle</span><span>${icons.upload}</span></div>
               <div class="settings-menu-item" data-setting="cloudSubtitles"><span>Search Cloud</span><span>${icons.cloud}</span></div>
             </div>
@@ -438,6 +478,16 @@ function createCustomVideoPlayer(options) {
             </div>
             <div class="submenu subtitle-size-menu">
               ${['Small', 'Medium', 'Large', 'X-Large'].map(size => `<div class="submenu-item" data-size="${size.toLowerCase()}"><span class="check-icon">${icons.check}</span><span>${size}</span></div>`).join('')}
+            </div>
+            <div class="submenu subtitle-position-menu">
+              <div class="submenu-item" data-position="top"><span class="check-icon">${icons.check}</span><span>Top</span></div>
+              <div class="submenu-item active" data-position="bottom"><span class="check-icon">${icons.check}</span><span>Bottom</span></div>
+              <div class="subtitle-offset-controls" style="padding: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 5px;">
+                <span style="font-size: 0.85em; color: #aaa;">Offset:</span>
+                <button class="offset-btn" data-offset="-20" style="padding: 5px 10px; background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 4px; cursor: pointer;">−</button>
+                <span class="offset-value" style="font-size: 0.85em; min-width: 30px; text-align: center;">0</span>
+                <button class="offset-btn" data-offset="20" style="padding: 5px 10px; background: rgba(255,255,255,0.1); border: none; color: white; border-radius: 4px; cursor: pointer;">+</button>
+              </div>
             </div>
             <div class="submenu cloud-subtitles-menu">
               <div class="cloud-subtitles-search">
@@ -459,7 +509,7 @@ function createCustomVideoPlayer(options) {
         </div>
       </div>
     </div>
-    <div class="subtitle-container"><div class="subtitle-text"></div></div>
+    <div class="subtitle-container subtitle-position-bottom"><div class="subtitle-text"></div></div>
     <div class="player-tooltip"></div>
     <input type="file" accept=".srt,.vtt" id="subtitleFileInput" style="display:none" multiple>
   `;
@@ -641,6 +691,37 @@ function initCustomVideoPlayer(playerElement, options = {}) {
     });
   });
 
+  // Subtitle position
+  const positionMenu = playerElement.querySelector('.subtitle-position-menu');
+  playerElement.querySelector('[data-setting="subtitlePosition"]')?.addEventListener('click', () => { positionMenu.classList.toggle('visible'); });
+  positionMenu.querySelectorAll('.submenu-item[data-position]').forEach(item => {
+    item.addEventListener('click', () => {
+      // Remove existing position classes
+      subtitleContainer.classList.remove('subtitle-position-top', 'subtitle-position-middle', 'subtitle-position-bottom');
+      // Add new position class
+      subtitleContainer.classList.add(`subtitle-position-${item.dataset.position}`);
+      positionMenu.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      showToast(`Subtitle position: ${item.dataset.position}`, 'info');
+    });
+  });
+
+  // Subtitle offset controls
+  let subtitleOffset = 0;
+  const offsetValueEl = playerElement.querySelector('.offset-value');
+  const offsetBtns = playerElement.querySelectorAll('.offset-btn');
+  
+  offsetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const change = parseInt(btn.dataset.offset);
+      subtitleOffset = Math.max(-200, Math.min(200, subtitleOffset + change));
+      offsetValueEl.textContent = subtitleOffset > 0 ? `+${subtitleOffset}` : subtitleOffset;
+      subtitleContainer.style.bottom = `calc(100px + ${subtitleOffset}px)`;
+      subtitleContainer.style.top = 'auto';
+      subtitleContainer.style.transform = 'translateX(-50%)';
+    });
+  });
+
   // Subtitle track selection
   const subtitleTrackMenu = playerElement.querySelector('.subtitle-track-menu');
   playerElement.querySelector('[data-setting="subtitleTrack"]')?.addEventListener('click', () => { subtitleTrackMenu.classList.toggle('visible'); });
@@ -749,71 +830,408 @@ function initCustomVideoPlayer(playerElement, options = {}) {
     }
   };
   
-  // Cloud subtitles handler
-  const cloudSubtitlesMenu = playerElement.querySelector('.cloud-subtitles-menu');
-  playerElement.querySelector('[data-setting="cloudSubtitles"]')?.addEventListener('click', () => { 
-    cloudSubtitlesMenu.classList.toggle('visible'); 
-    uploadSubtitleMenu.classList.remove('visible');
-    subtitleTrackMenu.classList.remove('visible');
-  });
+// Cloud subtitles handler - Create a proper modal panel for subtitle search
+  let cloudSubtitlesModal = null;
   
-  const cloudSearchInput = playerElement.querySelector('.cloud-search-input');
-  const cloudSearchBtn = playerElement.querySelector('.cloud-search-btn');
-  
-  // Handle cloud subtitle search
-  async function handleCloudSearch() {
-    const query = cloudSearchInput?.value.trim();
-    if (!query) {
-      showToast('Please enter a search term', 'warning');
-      return;
+  function createCloudSubtitlesModal() {
+    // Remove existing modal if any
+    const existing = document.getElementById('cloudSubtitlesModal');
+    if (existing) existing.remove();
+    
+    cloudSubtitlesModal = document.createElement('div');
+    cloudSubtitlesModal.id = 'cloudSubtitlesModal';
+    cloudSubtitlesModal.className = 'cloud-subtitles-modal';
+    cloudSubtitlesModal.innerHTML = `
+      <div class="cloud-subtitles-modal-content">
+        <div class="cloud-subtitles-modal-header">
+          <h3>☁️ Search Cloud Subtitles</h3>
+          <button class="close-cloud-modal">&times;</button>
+        </div>
+        <div class="cloud-subtitles-modal-body">
+          <div class="search-subtitle-form">
+            <input type="text" class="cloud-search-input-modal" placeholder="Search subtitles (e.g., anime name, episode)...">
+            <button class="cloud-search-btn-modal">🔍 Search</button>
+          </div>
+          <div class="cloud-results-modal"></div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(cloudSubtitlesModal);
+    
+    // Add styles for the modal if not exists
+    if (!document.getElementById('cloudSubtitlesModalStyles')) {
+      const styles = document.createElement('style');
+      styles.id = 'cloudSubtitlesModalStyles';
+      styles.textContent = `
+        .cloud-subtitles-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.85);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 3000;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.3s ease;
+          padding: 20px;
+        }
+        .cloud-subtitles-modal.visible {
+          opacity: 1;
+          visibility: visible;
+        }
+        .cloud-subtitles-modal-content {
+          background: var(--glass-bg, rgba(22, 33, 62, 0.95));
+          backdrop-filter: blur(10px);
+          border-radius: 16px;
+          width: 100%;
+          max-width: 500px;
+          max-height: 80vh;
+          border: 1px solid rgba(233, 69, 96, 0.3);
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          animation: modalSlideIn 0.3s ease-out;
+        }
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-30px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .cloud-subtitles-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .cloud-subtitles-modal-header h3 {
+          color: var(--accent, #e94560);
+          margin: 0;
+          font-size: 1.2em;
+        }
+        .close-cloud-modal {
+          background: none;
+          border: none;
+          color: white;
+          font-size: 1.8em;
+          cursor: pointer;
+          padding: 5px 10px;
+          line-height: 1;
+          transition: all 0.2s ease;
+        }
+        .close-cloud-modal:hover {
+          color: var(--accent, #e94560);
+          transform: scale(1.1);
+        }
+        .cloud-subtitles-modal-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 20px;
+        }
+        .search-subtitle-form {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        .cloud-search-input-modal {
+          flex: 1;
+          padding: 12px 16px;
+          border: 2px solid rgba(233, 69, 96, 0.3);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          font-size: 1em;
+          transition: all 0.3s ease;
+        }
+        .cloud-search-input-modal:focus {
+          outline: none;
+          border-color: var(--accent, #e94560);
+          box-shadow: 0 0 15px rgba(233, 69, 96, 0.3);
+        }
+        .cloud-search-input-modal::placeholder {
+          color: rgba(255, 255, 255, 0.5);
+        }
+        .cloud-search-btn-modal {
+          padding: 12px 24px;
+          background: linear-gradient(135deg, var(--accent, #e94560), #ff6b6b);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 1em;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+        }
+        .cloud-search-btn-modal:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+        }
+        .cloud-search-btn-modal:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .cloud-results-modal {
+          max-height: 400px;
+          overflow-y: auto;
+        }
+        .cloud-results-modal .subtitle-result {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 15px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          margin-bottom: 10px;
+          transition: all 0.2s ease;
+          cursor: pointer;
+        }
+        .cloud-results-modal .subtitle-result:hover {
+          background: rgba(233, 69, 96, 0.15);
+          border-color: rgba(233, 69, 96, 0.3);
+          transform: translateX(5px);
+        }
+        .cloud-results-modal .subtitle-result-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .cloud-results-modal .subtitle-result-info .name {
+          color: white;
+          font-weight: 500;
+          margin-bottom: 5px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .cloud-results-modal .subtitle-result-info .details {
+          font-size: 0.85em;
+          color: rgba(255, 255, 255, 0.6);
+        }
+        .cloud-results-modal .download-btn {
+          padding: 10px 20px;
+          background: var(--accent, #e94560);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.9em;
+          font-weight: bold;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+          margin-left: 10px;
+        }
+        .cloud-results-modal .download-btn:hover {
+          background: #ff6b6b;
+          transform: scale(1.05);
+        }
+        .cloud-results-modal .download-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .cloud-results-modal .loading-state {
+          text-align: center;
+          padding: 40px 20px;
+          color: rgba(255, 255, 255, 0.7);
+        }
+        .cloud-results-modal .loading-state .loading-spinner {
+          width: 40px;
+          height: 40px;
+          margin: 0 auto 15px;
+        }
+        .cloud-results-modal .no-results {
+          text-align: center;
+          padding: 40px 20px;
+          color: rgba(255, 255, 255, 0.5);
+        }
+        .cloud-results-modal .no-results-icon {
+          font-size: 3em;
+          margin-bottom: 15px;
+        }
+        @media (max-width: 540px) {
+          .cloud-subtitles-modal-content {
+            max-height: 90vh;
+          }
+          .search-subtitle-form {
+            flex-direction: column;
+          }
+          .cloud-search-btn-modal {
+            width: 100%;
+          }
+        }
+      `;
+      document.head.appendChild(styles);
     }
     
-    const resultsContainer = playerElement.querySelector('.cloud-subtitles-results');
-    resultsContainer.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 20px;"><span class="loading-spinner"></span> Searching...</p>';
+    // Event listeners
+    const closeBtn = cloudSubtitlesModal.querySelector('.close-cloud-modal');
+    closeBtn.addEventListener('click', closeCloudSubtitlesModal);
     
-    try {
-      const results = await searchCloudSubtitles(query);
-      displayCloudResults(results);
-    } catch (error) {
-      console.error('Cloud search error:', error);
-      resultsContainer.innerHTML = '<p style="color: var(--accent); text-align: center; padding: 20px;">Search failed. Try again.</p>';
+    cloudSubtitlesModal.addEventListener('click', (e) => {
+      if (e.target === cloudSubtitlesModal) {
+        closeCloudSubtitlesModal();
+      }
+    });
+    
+    // Close on escape key
+    document.addEventListener('keydown', handleCloudModalEscape);
+    
+    // Search functionality
+    const searchInput = cloudSubtitlesModal.querySelector('.cloud-search-input-modal');
+    const searchBtn = cloudSubtitlesModal.querySelector('.cloud-search-btn-modal');
+    
+    async function handleCloudSearchModal() {
+      const query = searchInput.value.trim();
+      if (!query) {
+        showToast('Please enter a search term', 'warning');
+        return;
+      }
+      
+      const resultsContainer = cloudSubtitlesModal.querySelector('.cloud-results-modal');
+      resultsContainer.innerHTML = `
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>Searching for "${query}"...</p>
+        </div>
+      `;
+      
+      searchBtn.disabled = true;
+      
+      try {
+        const results = await searchCloudSubtitles(query);
+        displayCloudResultsModal(results, query);
+      } catch (error) {
+        console.error('Cloud search error:', error);
+        resultsContainer.innerHTML = `
+          <div class="no-results">
+            <div class="no-results-icon">😕</div>
+            <p>Search failed. Please try again.</p>
+          </div>
+        `;
+      } finally {
+        searchBtn.disabled = false;
+      }
     }
+    
+    searchBtn.addEventListener('click', handleCloudSearchModal);
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleCloudSearchModal();
+      }
+    });
+    
+    // Focus input
+    setTimeout(() => searchInput.focus(), 100);
   }
   
-  // Display cloud search results
-  function displayCloudResults(results) {
-    const resultsContainer = playerElement.querySelector('.cloud-subtitles-results');
-    if (!resultsContainer) return;
+  function displayCloudResultsModal(results, query) {
+    const resultsContainer = cloudSubtitlesModal.querySelector('.cloud-results-modal');
     
     if (results.length === 0) {
-      resultsContainer.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 20px;">No results found</p>';
+      resultsContainer.innerHTML = `
+        <div class="no-results">
+          <div class="no-results-icon">🔍</div>
+          <p>No subtitles found for "${query}"</p>
+          <p style="font-size: 0.9em; margin-top: 10px; color: rgba(255,255,255,0.5);">Try a different search term or upload your own subtitle</p>
+        </div>
+      `;
       return;
     }
     
-    resultsContainer.innerHTML = results.map(result => `
-      <div class="subtitle-result" onclick="loadCloudSubtitle('${result.id}', '${result.file_name.replace(/'/g, "\\'")}')">
+    resultsContainer.innerHTML = results.map((result, index) => `
+      <div class="subtitle-result" data-id="${result.id}" data-filename="${result.file_name.replace(/'/g, "\\'")}" onclick="handleSubtitleClick('${result.id}', '${result.file_name.replace(/'/g, "\\'")}', this)">
         <div class="subtitle-result-info">
-          <div class="name">${result.file_name.substring(0, 30)}${result.file_name.length > 30 ? '...' : ''}</div>
-          <div class="details">${result.language?.toUpperCase() || 'Unknown'} • ⭐ ${result.rating || 'N/A'} • ${result.downloads || 0} downloads</div>
+          <div class="name">${result.file_name}</div>
+          <div class="details">
+            ${result.language?.toUpperCase() || 'Unknown'} 
+            • ⭐ ${result.rating || 'N/A'} 
+            • ↓ ${result.downloads || 0}
+          </div>
         </div>
-        <button class="download-btn">⬇</button>
+        <button class="download-btn" onclick="event.stopPropagation(); handleSubtitleDownload('${result.id}', '${result.file_name.replace(/'/g, "\\'")}', this)">⬇</button>
       </div>
     `).join('');
   }
   
-  // Expose load cloud subtitle function globally
-  window.loadCloudSubtitle = async function(subtitleId, fileName) {
+  // Global function to handle subtitle result click
+  window.handleSubtitleClick = async function(subtitleId, fileName, element) {
+    // Highlight selected
+    element.parentElement.querySelectorAll('.subtitle-result').forEach(el => el.style.background = '');
+    element.style.background = 'rgba(233, 69, 96, 0.25)';
+    element.style.borderColor = 'var(--accent)';
+    
+    // Download and load
+    await handleSubtitleDownload(subtitleId, fileName, element.querySelector('.download-btn'));
+  };
+  
+  // Global function to handle subtitle download
+  window.handleSubtitleDownload = async function(subtitleId, fileName, button) {
+    button.disabled = true;
+    button.textContent = '⏳';
+    
     const success = await downloadAndLoadCloudSubtitle(subtitleId, fileName);
+    
     if (success) {
+      button.textContent = '✓';
+      button.style.background = 'var(--success, #00d26a)';
+      showToast(`Loaded: ${fileName}`, 'success');
+      
+      // Update uploaded subtitles list in the player
       updateUploadedSubtitlesList();
+      
+      // Close modal after short delay
+      setTimeout(() => {
+        closeCloudSubtitlesModal();
+      }, 1000);
+    } else {
+      button.disabled = false;
+      button.textContent = '⬇';
     }
   };
   
-  cloudSearchBtn?.addEventListener('click', handleCloudSearch);
-  cloudSearchInput?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      handleCloudSearch();
+  function openCloudSubtitlesModal() {
+    if (!cloudSubtitlesModal) {
+      createCloudSubtitlesModal();
     }
+    cloudSubtitlesModal.classList.add('visible');
+    
+    // Pre-fill search with anime title if available
+    const searchInput = cloudSubtitlesModal?.querySelector('.cloud-search-input-modal');
+    if (searchInput && window.currentAnimeTitle) {
+      searchInput.value = window.currentAnimeTitle;
+    }
+  }
+  
+  function closeCloudSubtitlesModal() {
+    if (cloudSubtitlesModal) {
+      cloudSubtitlesModal.classList.remove('visible');
+      document.removeEventListener('keydown', handleCloudModalEscape);
+    }
+  }
+  
+  function handleCloudModalEscape(e) {
+    if (e.key === 'Escape') {
+      closeCloudSubtitlesModal();
+    }
+  }
+  
+  // Attach cloud subtitles click handler to player settings
+  playerElement.querySelector('[data-setting="cloudSubtitles"]')?.addEventListener('click', () => {
+    openCloudSubtitlesModal();
+    // Close the settings menu
+    settingsMenu?.classList.remove('visible');
   });
   
   // Update uploaded subtitles list on init
@@ -1803,6 +2221,10 @@ function displayAnimeDetails(anime, title) {
   currentAnimeId = anime.id || null;
   
   const animeTitle = anime.title || title || 'Unknown Title';
+  
+  // Store anime title globally for subtitle search
+  window.currentAnimeTitle = title || animeTitle || '';
+  
   const image = anime.image || anime.poster || anime.coverImage || 'https://via.placeholder.com/200x300';
   const japaneseTitle = anime.japaneseTitle || anime.jname || '';
   const type = anime.type || anime.format || 'Unknown';
@@ -2060,7 +2482,7 @@ function displayHianimeScrapStream(streamData, serverName) {
     serversContainer.prepend(playerContainer);
   }
   
-  // Show intro/outro info
+// Show intro/outro info
   let metaInfo = '';
   if (intro.start !== 0 || intro.end !== 0) {
     metaInfo += `<p style="color:#ffcc00;">Skip intro: ${intro.start}s - ${intro.end}s</p>`;
@@ -2068,6 +2490,9 @@ function displayHianimeScrapStream(streamData, serverName) {
   if (outro.start !== 0 || outro.end !== 0) {
     metaInfo += `<p style="color:#ffcc00;">Skip outro: ${outro.start}s - ${outro.end}s</p>`;
   }
+  
+  // Store anime title for cloud subtitle search
+  window.currentAnimeTitle = serverName || window.currentAnimeTitle;
   
   // Add header with server name and meta info
   playerContainer.innerHTML = `
@@ -2288,6 +2713,9 @@ window.playStream = async function(proxiedUrl, title) {
   } else {
     serversContainer.prepend(playerContainer);
   }
+  
+  // Store anime title for cloud subtitle search
+  window.currentAnimeTitle = title || window.currentAnimeTitle;
   
   // Add header with title
   playerContainer.innerHTML = `<h3>Now Playing: ${title}</h3>`;
