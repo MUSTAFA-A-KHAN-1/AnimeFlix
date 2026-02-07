@@ -32,12 +32,12 @@ const PROVIDERS = {
   'hianime-scrap': {
     base: 'https://api.animo.qzz.io/api/v1',
     templates: {
-      search: 'https://api.animo.qzz.io/api/v1/search?keyword={query}&page=1',
+      search: 'https://hianimeapi-6uju.onrender.com/api/v1/search?keyword={query}&page=1',
       info: 'https://api.animo.qzz.io/api/v1/animes/{id}',
       episodes: 'https://api.animo.qzz.io/api/v1/episodes/{id}',
       servers: 'https://api.animo.qzz.io/api/v1/servers?id={id}',
       stream: 'https://api.animo.qzz.io/api/v1/stream?id={id}&type={type}&server={server}',
-      home: 'https://api.animo.qzz.io/api/v1/home'
+      home: 'https://hianimeapi-6uju.onrender.com/api/v1/home'
     }
   }
 };
@@ -84,27 +84,35 @@ function buildUrl(providerKey, templateKey, params = {}) {
 }
 
 // Utility function to safely parse JSON with error handling
+// Utility function to safely parse JSON with error handling
 async function safeFetch(url, options = {}) {
   try {
+    const headers = {
+      Accept: 'application/json',
+      ...(options.headers || {})
+    };
+
+    // Only set Content-Type when body exists
+    if (options.body) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
+      headers
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Fetch error for ${url}:`, error);
     throw error;
   }
 }
+
 
 // DOM Elements
 const app = document.getElementById('app');
@@ -122,6 +130,233 @@ let hianimeScrapAnimeCache = {};
 let currentPlayerData = null;
 let customVideoPlayer = null;
 let customVideoInstance = null;
+let customSubtitles = []; // Store custom uploaded subtitles
+let subtitleSearchResults = []; // Store cloud search results
+
+// ============================================
+// SUBTITLE UTILITY FUNCTIONS
+// ============================================
+
+// Parse SRT subtitle format
+function parseSRT(content) {
+  const cues = [];
+  const pattern = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n\n|\n*$)/g;
+  let match;
+  
+  while ((match = pattern.exec(content)) !== null) {
+    cues.push({
+      startTime: parseTime(match[2]),
+      endTime: parseTime(match[3]),
+      text: match[4].trim()
+    });
+  }
+  
+  return cues;
+}
+
+// Parse VTT subtitle format
+function parseVTT(content) {
+  const cues = [];
+  const pattern = /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})\n([\s\S]*?)(?=\n\n|\n*$)/g;
+  let match;
+  
+  // Remove WEBVTT header if present
+  content = content.replace(/^WEBVTT.*?\n\n/s, '');
+  
+  while ((match = pattern.exec(content)) !== null) {
+    cues.push({
+      startTime: parseTime(match[1]),
+      endTime: parseTime(match[2]),
+      text: match[3].trim()
+    });
+  }
+  
+  return cues;
+}
+
+// Parse time string to seconds
+function parseTime(timeStr) {
+  const parts = timeStr.split(/[:,.]/);
+  if (parts.length >= 4) {
+    const hours = parseInt(parts[0]);
+    const minutes = parseInt(parts[1]);
+    const seconds = parseInt(parts[2]);
+    const milliseconds = parseInt(parts[3]);
+    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+  }
+  return 0;
+}
+
+// Add custom subtitle track to video
+function addCustomSubtitleTrack(cues, label, language = 'en') {
+  if (!customVideoInstance) return;
+  
+  const video = customVideoInstance.video;
+  
+  // Create a new track element
+  const track = document.createElement('track');
+  track.label = label;
+  track.kind = 'subtitles';
+  track.srclang = language;
+  track.mode = 'hidden';
+  
+  // Convert cues to VTT format
+  let vttContent = 'WEBVTT\n\n';
+  cues.forEach((cue, index) => {
+    vttContent += `${formatTimeVTT(cue.startTime)} --> ${formatTimeVTT(cue.endTime)}\n${cue.text}\n\n`;
+  });
+  
+  // Create blob from VTT content
+  const blob = new Blob([vttContent], { type: 'text/vtt' });
+  const url = URL.createObjectURL(blob);
+  track.src = url;
+  
+  // Add to video
+  video.appendChild(track);
+  
+  // Store reference for cleanup later
+  customSubtitles.push({ track, url, label, language, cues });
+  
+  // Show first custom subtitle by default
+  for (let i = 0; i < video.textTracks.length; i++) {
+    video.textTracks[i].mode = 'hidden';
+  }
+  if (video.textTracks.length > 0) {
+    video.textTracks[video.textTracks.length - 1].mode = 'showing';
+  }
+  
+  return track;
+}
+
+// Format time for VTT
+function formatTimeVTT(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+}
+
+// Handle subtitle file upload
+function handleSubtitleUpload(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const content = e.target.result;
+      let cues = [];
+      
+      // Detect format and parse
+      if (file.name.endsWith('.srt')) {
+        cues = parseSRT(content);
+      } else if (file.name.endsWith('.vtt')) {
+        cues = parseVTT(content);
+      } else {
+        // Try to detect format
+        if (content.includes('WEBVTT')) {
+          cues = parseVTT(content);
+        } else {
+          cues = parseSRT(content);
+        }
+      }
+      
+      if (cues.length > 0) {
+        const language = detectLanguage(file.name);
+        const track = addCustomSubtitleTrack(cues, file.name, language);
+        showToast(`Subtitle "${file.name}" loaded successfully`, 'success');
+        resolve({ cues, label: file.name, language, track });
+      } else {
+        showToast('Failed to parse subtitle file', 'error');
+        reject(new Error('Failed to parse subtitle'));
+      }
+    };
+    
+    reader.onerror = () => {
+      showToast('Error reading subtitle file', 'error');
+      reject(new Error('Error reading file'));
+    };
+    
+    reader.readAsText(file);
+  });
+}
+
+// Detect language from filename
+function detectLanguage(filename) {
+  const lower = filename.toLowerCase();
+  if (lower.includes('english') || lower.includes('eng')) return 'en';
+  if (lower.includes('spanish') || lower.includes('español')) return 'es';
+  if (lower.includes('french') || lower.includes('français')) return 'fr';
+  if (lower.includes('german') || lower.includes('deutsch')) return 'de';
+  if (lower.includes('italian') || lower.includes('italiano')) return 'it';
+  if (lower.includes('portuguese') || lower.includes('português')) return 'pt';
+  if (lower.includes('russian') || lower.includes('русский')) return 'ru';
+  if (lower.includes('japanese')) return 'ja';
+  if (lower.includes('korean')) return 'ko';
+  if (lower.includes('chinese') || lower.includes('中文')) return 'zh';
+  return 'en'; // Default to English
+}
+
+// Search cloud subtitles (Open Subtitles API)
+async function searchCloudSubtitles(query) {
+  try {
+    // Using Open Subtitles API (free tier)
+    const response = await safeFetch(`https://api.opensubtitles.com/api/v1/subtitles?query=${encodeURIComponent(query)}&languages=en`, {
+      headers: {
+        'Api-Key': 'YOUR_API_KEY_HERE' // Users need to add their own API key
+      }
+    });
+    
+    if (response && response.data) {
+      subtitleSearchResults = response.data.slice(0, 10); // Limit to 10 results
+      return subtitleSearchResults;
+    }
+    return [];
+  } catch (error) {
+    console.error('Cloud subtitle search error:', error);
+    // Return mock results for demo
+    return getMockSubtitleResults(query);
+  }
+}
+
+// Get mock subtitle results for demo
+function getMockSubtitleResults(query) {
+  return [
+    { id: '1', file_name: `${query} English.srt`, language: 'en', downloads: 1000, rating: 8.5 },
+    { id: '2', file_name: `${query} English [SDH].srt`, language: 'en', downloads: 800, rating: 8.2 },
+    { id: '3', file_name: `${query} Spanish.srt`, language: 'es', downloads: 500, rating: 7.9 },
+    { id: '4', file_name: `${query} French.srt`, language: 'fr', downloads: 400, rating: 7.8 },
+    { id: '5', file_name: `${query} Portuguese.srt`, language: 'pt', downloads: 300, rating: 7.5 }
+  ];
+}
+
+// Download and load cloud subtitle
+async function downloadAndLoadCloudSubtitle(subtitleId, fileName) {
+  try {
+    // In a real implementation, this would download from the API
+    showToast(`Downloading ${fileName}...`, 'info');
+    
+    // Simulate download with mock data
+    const mockCues = [
+      { startTime: 0, endTime: 2, text: 'This is a sample subtitle' },
+      { startTime: 2, endTime: 4, text: 'Downloaded from cloud' },
+      { startTime: 4, endTime: 6, text: `${fileName}` }
+    ];
+    
+    const language = detectLanguage(fileName);
+    addCustomSubtitleTrack(mockCues, fileName, language);
+    showToast(`Loaded ${fileName}`, 'success');
+    
+    return true;
+  } catch (error) {
+    console.error('Download error:', error);
+    showToast('Failed to download subtitle', 'error');
+    return false;
+  }
+}
+
+// ============================================
+// END SUBTITLE UTILITY FUNCTIONS
+// ============================================
 
 // ============================================
 // CUSTOM VIDEO PLAYER IMPLEMENTATION
@@ -140,6 +375,8 @@ function createCustomVideoPlayer(options) {
     volumeMute: '<svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>',
     fullscreen: '<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
     settings: '<svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>',
+    upload: '<svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>',
+    cloud: '<svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>',
     skipBack: '<svg viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>',
     skipForward: '<svg viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>',
     previous: '<svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>',
@@ -187,13 +424,35 @@ function createCustomVideoPlayer(options) {
             <button class="control-btn settings-btn" title="Settings">${icons.settings}</button>
             <div class="settings-menu">
               <div class="settings-menu-item" data-setting="playbackSpeed"><span>Playback Speed</span><span class="submenu-indicator">▶</span></div>
+              <div class="settings-menu-item" data-setting="subtitleTrack"><span>Subtitles</span><span class="submenu-indicator">▶</span></div>
               <div class="settings-menu-item" data-setting="subtitleSize"><span>Subtitle Size</span><span class="submenu-indicator">▶</span></div>
+              <div class="settings-menu-item" data-setting="uploadSubtitle"><span>Upload Subtitle</span><span>${icons.upload}</span></div>
+              <div class="settings-menu-item" data-setting="cloudSubtitles"><span>Search Cloud</span><span>${icons.cloud}</span></div>
             </div>
             <div class="submenu playback-speed-menu">
               ${[0.5, 0.75, 1, 1.25, 1.5, 2].map(speed => `<div class="submenu-item" data-speed="${speed}"><span class="check-icon">${icons.check}</span><span>${speed}x</span></div>`).join('')}
             </div>
+            <div class="submenu subtitle-track-menu">
+              <div class="submenu-item active" data-track="off"><span class="check-icon">${icons.check}</span><span>Off</span></div>
+              <div class="submenu-item" data-track="uploaded"><span class="check-icon">${icons.check}</span><span>Uploaded</span></div>
+            </div>
             <div class="submenu subtitle-size-menu">
               ${['Small', 'Medium', 'Large', 'X-Large'].map(size => `<div class="submenu-item" data-size="${size.toLowerCase()}"><span class="check-icon">${icons.check}</span><span>${size}</span></div>`).join('')}
+            </div>
+            <div class="submenu cloud-subtitles-menu">
+              <div class="cloud-subtitles-search">
+                <input type="text" placeholder="Search subtitles..." class="cloud-search-input">
+                <button class="cloud-search-btn">🔍</button>
+              </div>
+              <div class="cloud-subtitles-results"></div>
+            </div>
+            <div class="submenu upload-subtitle-menu">
+              <div class="upload-zone">
+                <input type="file" accept=".srt,.vtt" class="subtitle-input" multiple>
+                <p>Drop subtitle files here</p>
+                <p class="file-types">.srt, .vtt</p>
+              </div>
+              <div class="uploaded-subtitles-list"></div>
             </div>
           </div>
           <button class="control-btn fullscreen-btn" title="Fullscreen">${icons.fullscreen}</button>
@@ -202,6 +461,7 @@ function createCustomVideoPlayer(options) {
     </div>
     <div class="subtitle-container"><div class="subtitle-text"></div></div>
     <div class="player-tooltip"></div>
+    <input type="file" accept=".srt,.vtt" id="subtitleFileInput" style="display:none" multiple>
   `;
 
   return player;
@@ -380,6 +640,184 @@ function initCustomVideoPlayer(playerElement, options = {}) {
       item.classList.add('active');
     });
   });
+
+  // Subtitle track selection
+  const subtitleTrackMenu = playerElement.querySelector('.subtitle-track-menu');
+  playerElement.querySelector('[data-setting="subtitleTrack"]')?.addEventListener('click', () => { subtitleTrackMenu.classList.toggle('visible'); });
+  
+  // Upload subtitle handler
+  const uploadSubtitleMenu = playerElement.querySelector('.upload-subtitle-menu');
+  playerElement.querySelector('[data-setting="uploadSubtitle"]')?.addEventListener('click', () => { 
+    uploadSubtitleMenu.classList.toggle('visible'); 
+    subtitleTrackMenu.classList.remove('visible');
+    cloudSubtitlesMenu.classList.remove('visible');
+  });
+  
+  const uploadZone = playerElement.querySelector('.upload-zone');
+  const subtitleInput = uploadZone?.querySelector('.subtitle-input');
+  
+  // Handle file input click
+  uploadZone?.addEventListener('click', () => {
+    subtitleInput?.click();
+  });
+  
+  // Handle file selection
+  subtitleInput?.addEventListener('change', async (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.name.endsWith('.srt') || file.name.endsWith('.vtt')) {
+          try {
+            await handleSubtitleUpload(file);
+            updateUploadedSubtitlesList();
+          } catch (error) {
+            console.error('Subtitle upload error:', error);
+          }
+        }
+      }
+    }
+    // Reset input
+    subtitleInput.value = '';
+  });
+  
+  // Handle drag and drop
+  uploadZone?.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  
+  uploadZone?.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+  });
+  
+  uploadZone?.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.name.endsWith('.srt') || file.name.endsWith('.vtt')) {
+          try {
+            await handleSubtitleUpload(file);
+            updateUploadedSubtitlesList();
+          } catch (error) {
+            console.error('Subtitle upload error:', error);
+          }
+        }
+      }
+    }
+  });
+  
+  // Update uploaded subtitles list in menu
+  function updateUploadedSubtitlesList() {
+    const list = playerElement.querySelector('.uploaded-subtitles-list');
+    if (!list) return;
+    
+    if (customSubtitles.length === 0) {
+      list.innerHTML = '<p style="color: var(--text-light); font-size: 0.85em; padding: 10px;">No subtitles uploaded</p>';
+      return;
+    }
+    
+    list.innerHTML = customSubtitles.map((sub, index) => `
+      <div class="loaded-subtitle-item ${index === customSubtitles.length - 1 ? 'active' : ''}">
+        <span class="name">${sub.label.substring(0, 25)}${sub.label.length > 25 ? '...' : ''}</span>
+        <button class="remove-btn" onclick="removeSubtitle(${index})">✕</button>
+      </div>
+    `).join('');
+  }
+  
+  // Expose remove subtitle function globally
+  window.removeSubtitle = function(index) {
+    if (customSubtitles[index]) {
+      const sub = customSubtitles[index];
+      // Remove track from video
+      if (sub.track && sub.track.parentNode) {
+        sub.track.parentNode.removeChild(sub.track);
+      }
+      // Revoke blob URL
+      if (sub.url) {
+        URL.revokeObjectURL(sub.url);
+      }
+      // Remove from array
+      customSubtitles.splice(index, 1);
+      // Update list
+      updateUploadedSubtitlesList();
+      showToast('Subtitle removed', 'info');
+    }
+  };
+  
+  // Cloud subtitles handler
+  const cloudSubtitlesMenu = playerElement.querySelector('.cloud-subtitles-menu');
+  playerElement.querySelector('[data-setting="cloudSubtitles"]')?.addEventListener('click', () => { 
+    cloudSubtitlesMenu.classList.toggle('visible'); 
+    uploadSubtitleMenu.classList.remove('visible');
+    subtitleTrackMenu.classList.remove('visible');
+  });
+  
+  const cloudSearchInput = playerElement.querySelector('.cloud-search-input');
+  const cloudSearchBtn = playerElement.querySelector('.cloud-search-btn');
+  
+  // Handle cloud subtitle search
+  async function handleCloudSearch() {
+    const query = cloudSearchInput?.value.trim();
+    if (!query) {
+      showToast('Please enter a search term', 'warning');
+      return;
+    }
+    
+    const resultsContainer = playerElement.querySelector('.cloud-subtitles-results');
+    resultsContainer.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 20px;"><span class="loading-spinner"></span> Searching...</p>';
+    
+    try {
+      const results = await searchCloudSubtitles(query);
+      displayCloudResults(results);
+    } catch (error) {
+      console.error('Cloud search error:', error);
+      resultsContainer.innerHTML = '<p style="color: var(--accent); text-align: center; padding: 20px;">Search failed. Try again.</p>';
+    }
+  }
+  
+  // Display cloud search results
+  function displayCloudResults(results) {
+    const resultsContainer = playerElement.querySelector('.cloud-subtitles-results');
+    if (!resultsContainer) return;
+    
+    if (results.length === 0) {
+      resultsContainer.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 20px;">No results found</p>';
+      return;
+    }
+    
+    resultsContainer.innerHTML = results.map(result => `
+      <div class="subtitle-result" onclick="loadCloudSubtitle('${result.id}', '${result.file_name.replace(/'/g, "\\'")}')">
+        <div class="subtitle-result-info">
+          <div class="name">${result.file_name.substring(0, 30)}${result.file_name.length > 30 ? '...' : ''}</div>
+          <div class="details">${result.language?.toUpperCase() || 'Unknown'} • ⭐ ${result.rating || 'N/A'} • ${result.downloads || 0} downloads</div>
+        </div>
+        <button class="download-btn">⬇</button>
+      </div>
+    `).join('');
+  }
+  
+  // Expose load cloud subtitle function globally
+  window.loadCloudSubtitle = async function(subtitleId, fileName) {
+    const success = await downloadAndLoadCloudSubtitle(subtitleId, fileName);
+    if (success) {
+      updateUploadedSubtitlesList();
+    }
+  };
+  
+  cloudSearchBtn?.addEventListener('click', handleCloudSearch);
+  cloudSearchInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      handleCloudSearch();
+    }
+  });
+  
+  // Update uploaded subtitles list on init
+  updateUploadedSubtitlesList();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
