@@ -115,31 +115,72 @@ const serversContainer = document.getElementById('servers');
 
 let currentAnimeId = null;
 let currentEpisodes = [];
-let hianimeScrapAnimeCache = {}; // Store anime data by ID for hianime-scrap
+let hianimeScrapAnimeCache = {};
+let currentPlayerData = null;
+
+function showToast(message, type = 'info') {
+  const existingContainer = document.querySelector('.toast-container');
+  if (existingContainer) {
+    existingContainer.remove();
+  }
+  
+  const container = document.createElement('div');
+  container.className = 'toast-container';
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  toast.innerHTML = `<span style="font-size:1.2em;">${icon}</span> ${message}`;
+  
+  container.appendChild(toast);
+  document.body.appendChild(container);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => container.remove(), 300);
+  }, 3000);
+}
+
+function showSkeletonLoading() {
+  const skeletonCount = 12;
+  let skeletonHTML = '';
+  
+  for (let i = 0; i < skeletonCount; i++) {
+    skeletonHTML += `
+      <div class="skeleton-card">
+        <div class="skeleton skeleton-img"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text short"></div>
+      </div>
+    `;
+  }
+  
+  resultsContainer.innerHTML = skeletonHTML;
+}
 
 // Main function to search for anime
 async function searchAnime() {
   const query = searchInput.value.trim();
   
   if (!query) {
-    alert('Please enter a search query');
+    showToast('Please enter a search query', 'warning');
     return;
   }
   
-  const provider = providerSelect.value;
-  
   try {
-    resultsContainer.innerHTML = '<p>Searching...</p>';
+    showSkeletonLoading();
     
+    const provider = providerSelect.value;
     const searchUrl = buildUrl(provider, 'search', { query });
     console.log('Search URL:', searchUrl);
     
     const data = await safeFetch(searchUrl);
     
-    // Handle different response structures
     let results = [];
     
-    // Handle hianime-scrap response format: {success, data: {pageInfo, response: [...]}}
     if (data && data.data && data.data.response && Array.isArray(data.data.response)) {
       results = data.data.response;
     } else if (Array.isArray(data)) {
@@ -153,15 +194,16 @@ async function searchAnime() {
     }
     
     if (results.length === 0) {
-      resultsContainer.innerHTML = '<p>No results found. Try a different search term.</p>';
+      resultsContainer.innerHTML = '<p style="text-align:center;padding:40px;color:var(--text-light);">No results found. Try a different search term.</p>';
       return;
     }
     
     displayResults(results);
+    showToast(`Found ${results.length} results`, 'success');
     
   } catch (error) {
     console.error('Search error:', error);
-    resultsContainer.innerHTML = `<p class="error">Search failed: ${error.message}. Check your connection and try again.</p>`;
+    resultsContainer.innerHTML = `<p class="error" style="text-align:center;padding:40px;color:var(--accent);">Search failed: ${error.message}. Check your connection and try again.</p>`;
   }
 }
 
