@@ -1,0 +1,134 @@
+<parameter name="content"># HiAnime Scrap Provider Implementation Plan
+
+## Overview
+Create a new provider "hianime-scrap" that integrates with the new HiAnime API at `https://api.animo.qzz.io/api/v1`
+
+## API Endpoints to Implement
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/search?keyword={query}&page={page}` | GET | Search anime |
+| `/animes/{id}` | GET | Anime details |
+| `/episodes/{id}` | GET | Episodes list |
+| `/servers?id={episodeId}` | GET | Get streaming servers |
+| `/stream?id={episodeId}&type={type}&server={server}` | GET | Get stream URL |
+
+## Response Structures
+
+### Search Response
+```json
+{
+  "success": true,
+  "data": {
+    "pageInfo": { "totalPages": 4, "currentPage": 1, "hasNextPage": true },
+    "response": [
+      {
+        "title": "One Piece",
+        "alternativeTitle": "One Piece",
+        "id": "one-piece-100",
+        "poster": "https://...",
+        "episodes": { "sub": 1155, "dub": 1143, "eps": 1155 },
+        "type": "TV",
+        "duration": "24m"
+      }
+    ]
+  }
+}
+```
+
+### Episodes Response
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "title": "Full",
+      "alternativeTitle": "Full",
+      "id": "one-piece-movie-1-3096::ep=58122",
+      "isFiller": true,
+      "episodeNumber": 1
+    }
+  ]
+}
+```
+
+### Servers Response
+```json
+{
+  "success": true,
+  "data": {
+    "episode": 1,
+    "sub": [{ "index": 4, "type": "sub", "id": "610646", "name": "HD-1" }],
+    "dub": [],
+    "raw": []
+  }
+}
+```
+
+### Stream Response
+```json
+{
+  "success": true,
+  "data": {
+    "id": "...",
+    "type": "sub",
+    "link": {
+      "file": "https://...",
+      "type": "hls",
+      "directUrl": "https://...",
+      "proxyUrl": "https://..."
+    },
+    "tracks": [
+      { "file": "https://.../eng-2.vtt", "label": "English", "kind": "captions", "default": true }
+    ],
+    "intro": { "start": 0, "end": 0 },
+    "outro": { "start": 0, "end": 0 },
+    "server": "HD-2"
+  }
+}
+```
+
+## Implementation Tasks
+
+### 1. Add Provider Configuration
+Add `hianime-scrap` provider with:
+- Base URL: `https://api.animo.qzz.io/api/v1`
+- Templates for all endpoints
+
+### 2. Update Search Functionality
+- Parse new response structure (`data.response`)
+- Extract: title, id, poster, episodes.{sub,dub,eps}, type, duration
+
+### 3. Update Anime Details
+- Fetch from `/animes/{id}`
+- Parse: title, poster, type, status, genres, description
+
+### 4. Update Episodes Display
+- Fetch from `/episodes/{id}`
+- Display episode number, title, filler标记
+
+### 5. Update Servers Display
+- Fetch from `/servers?id={episodeId}`
+- Show sub/dub/raw server tabs
+- Display server name and index
+
+### 6. Update Video Player
+- Use stream endpoint with type and server params
+- Support subtitle tracks from response
+- Handle HLS streams with intro/outro markers
+
+### 7. Add Provider to Dropdown
+- Add "HiAnime Scrap" option to providerSelect
+
+## Files to Modify
+1. `src/main.js` - Add provider config, update functions
+2. `index.html` - Add new provider option
+
+## Testing Checklist
+- [ ] Search returns results with correct data
+- [ ] Anime details display properly
+- [ ] Episodes list loads correctly
+- [ ] Servers load and display
+- [ ] Video player works with subtitles
+- [ ] Pagination works (if implemented)
+</parameter>

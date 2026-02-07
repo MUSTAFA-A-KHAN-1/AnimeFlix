@@ -1,0 +1,52 @@
+<parameter name="content"># HiAnime Scrap Provider Implementation - TODO List
+
+## Phase 1: Provider Configuration
+- [ ] 1.1 Add hianime-scrap provider configuration with API endpoints
+- [ ] 1.2 Update buildUrl function to handle new endpoint patterns
+
+## Phase 2: Search Functionality
+- [ ] 2.1 Update searchAnime function for hianime-scrap
+- [ ] 2.2 Parse new search response structure (data.response)
+- [ ] 2.3 Display episode counts (sub/dub) in search results
+
+## Phase 3: Anime Details
+- [ ] 3.1 Update selectAnime for hianime-scrap endpoints
+- [ ] 3.2 Fetch from `/animes/{id}` endpoint
+- [ ] 3.3 Parse and display anime details properly
+
+## Phase 4: Episodes
+- [ ] 4.1 Update episodes fetching for hianime-scrap
+- [ ] 4.2 Fetch from `/episodes/{id}` endpoint
+- [ ] 4.3 Display episode number, title, and filler标记
+
+## Phase 5: Servers & Streaming
+- [ ] 5.1 Update selectEpisode for hianime-scrap servers
+- [ ] 5.2 Fetch from `/servers?id={episodeId}` endpoint
+- [ ] 5.3 Display sub/dub/raw server options
+
+## Phase 6: Video Player
+- [ ] 6.1 Update playStream for hianime-scrap stream endpoint
+- [ ] 6.2 Use `/stream?id={episodeId}&type={type}&server={server}`
+- [ ] 6.3 Add subtitle tracks support
+- [ ] 6.4 Handle intro/outro markers
+
+## Phase 7: UI Updates
+- [ ] 7.1 Add hianime-scrap to provider dropdown
+- [ ] 7.2 Update providerSelect onchange handler
+- [ ] 7.3 Test all functionality
+
+## Phase 8: Additional Features (Optional)
+- [ ] 8.1 Add pagination for search results
+- [ ] 8.2 Implement genre filtering
+- [ ] 8.3 Add schedule view
+- [ ] 8.4 Implement A-Z list
+
+## Testing
+- [ ] T1: Search returns results
+- [ ] T2: Anime details display
+- [ ] T3: Episodes list works
+- [ ] T4: Servers load correctly
+- [ ] T5: Video playback works
+- [ ] T6: Subtitles display
+- [ ] T7: Error handling works
+</parameter>
