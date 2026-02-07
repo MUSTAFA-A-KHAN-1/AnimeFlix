@@ -13,6 +13,15 @@
         <p>Stream your favorite anime with ease</p>
       </div>
 
+      <div class="header-nav">
+        <button id="homeBtn" class="nav-btn active">
+          <span class="nav-icon">🏠</span> Home
+        </button>
+        <button id="searchNavBtn" class="nav-btn">
+          <span class="nav-icon">🔍</span> Search
+        </button>
+      </div>
+
       <div class="search-container">
         <select id="providerSelect" aria-label="Provider">
           <option value="animekai">AnimeKai (Hianime)</option>
@@ -37,6 +46,12 @@
 
       <div id="servers"></div>
     </div>
+
+    <!-- Home Page Section -->
+    <div id="homePage" class="home-page hidden">
+      <div id="homeContent"></div>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

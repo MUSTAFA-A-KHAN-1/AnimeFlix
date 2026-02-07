@@ -15,7 +15,8 @@ const PROVIDERS = {
       search: API_ROOT + '/anime/animekai/{query}',
       info: API_ROOT + '/anime/animekai/info?id={id}',
       episodes: API_ROOT + '/anime/animekai/episodes/{id}',
-      watch: API_ROOT + '/anime/animekai/watch/{episodeId}'
+      watch: API_ROOT + '/anime/animekai/watch/{episodeId}',
+      home: API_ROOT + '/anime/animekai/new-releases'
     }
   },
   animepahe: {
@@ -24,7 +25,8 @@ const PROVIDERS = {
       search: API_ROOT + '/anime/animepahe/{query}',
       info: API_ROOT + '/anime/animepahe/info/{id}',
       episodes: API_ROOT + '/anime/animepahe/episodes/{id}',
-      watch: API_ROOT + '/anime/animepahe/watch?episodeId={episodeId}'
+      watch: API_ROOT + '/anime/animepahe/watch?episodeId={episodeId}',
+      home: API_ROOT + '/anime/animekai/new-releases'
     }
   },
   'hianime-scrap': {
@@ -34,7 +36,8 @@ const PROVIDERS = {
       info: 'https://api.animo.qzz.io/api/v1/animes/{id}',
       episodes: 'https://api.animo.qzz.io/api/v1/episodes/{id}',
       servers: 'https://api.animo.qzz.io/api/v1/servers?id={id}',
-      stream: 'https://api.animo.qzz.io/api/v1/stream?id={id}&type={type}&server={server}'
+      stream: 'https://api.animo.qzz.io/api/v1/stream?id={id}&type={type}&server={server}',
+      home: 'https://api.animo.qzz.io/api/v1/home'
     }
   }
 };
@@ -430,6 +433,493 @@ function initCustomVideoPlayer(playerElement, options = {}) {
 
 // ============================================
 // END CUSTOM VIDEO PLAYER
+// ============================================
+
+// Home page state
+let homePageData = null;
+let currentSpotlightIndex = 0;
+let spotlightInterval = null;
+let isHomePageVisible = true;
+
+// ============================================
+// HOME PAGE FUNCTIONS
+// ============================================
+
+// Fetch home page data from API
+async function fetchHomePageData() {
+  const provider = providerSelect.value;
+  const homeUrl = buildUrl(provider, 'home');
+  
+  console.log('Fetching home page data from:', homeUrl);
+  
+  try {
+    const data = await safeFetch(homeUrl);
+    return normalizeHomeData(data);
+  } catch (error) {
+    console.error('Error fetching home page data:', error);
+    throw error;
+  }
+}
+
+// Normalize home page data
+function normalizeHomeData(data) {
+  if (!data) return null;
+  
+  // Handle wrapped response {status, data: {...}}
+  if (data.data) {
+    data = data.data;
+  }
+  
+  return {
+    status: data.status || true,
+    spotlight: normalizeSpotlight(data.spotlight || []),
+    trending: normalizeAnimeList(data.trending || []),
+    topAiring: normalizeAnimeList(data.topAiring || []),
+    mostPopular: normalizeAnimeList(data.mostPopular || []),
+    mostFavorite: normalizeAnimeList(data.mostFavorite || []),
+    latestCompleted: normalizeAnimeList(data.latestCompleted || []),
+    latestEpisode: normalizeAnimeList(data.latestEpisode || []),
+    newAdded: normalizeAnimeList(data.newAdded || []),
+    topUpcoming: normalizeAnimeList(data.topUpcoming || []),
+    topTen: normalizeTopTen(data.topTen || { today: [], week: [], month: [] }),
+    genres: data.genres || []
+  };
+}
+
+// Normalize spotlight data
+function normalizeSpotlight(spotlightList) {
+  return spotlightList.map(item => ({
+    title: item.title || 'Unknown Title',
+    alternativeTitle: item.alternativeTitle || '',
+    id: item.id || '',
+    poster: item.poster || 'https://via.placeholder.com/400x600',
+    episodes: {
+      sub: item.episodes?.sub || 0,
+      dub: item.episodes?.dub || 0,
+      eps: item.episodes?.eps || 0
+    },
+    rank: item.rank || 0,
+    type: item.type || 'TV',
+    quality: item.quality || 'HD',
+    duration: item.duration || 'Unknown',
+    aired: item.aired || 'Unknown',
+    synopsis: item.synopsis || 'No synopsis available.'
+  }));
+}
+
+// Normalize anime list data
+function normalizeAnimeList(animeList) {
+  return animeList.map(item => ({
+    title: item.title || 'Unknown Title',
+    alternativeTitle: item.alternativeTitle || '',
+    id: item.id || '',
+    poster: item.poster || 'https://via.placeholder.com/200x300',
+    episodes: {
+      sub: item.episodes?.sub || 0,
+      dub: item.episodes?.dub || 0,
+      eps: item.episodes?.eps || 0
+    },
+    type: item.type || 'TV'
+  }));
+}
+
+// Normalize top 10 data
+function normalizeTopTen(topTen) {
+  return {
+    today: normalizeAnimeList(topTen.today || []).slice(0, 10),
+    week: normalizeAnimeList(topTen.week || []).slice(0, 10),
+    month: normalizeAnimeList(topTen.month || []).slice(0, 10)
+  };
+}
+
+// Show home page
+function showHomePage() {
+  const homePage = document.getElementById('homePage');
+  const searchContainer = document.querySelector('.search-container');
+  const resultsContainer = document.getElementById('results');
+  const detailsContainer = document.getElementById('details');
+  const episodesContainer = document.getElementById('episodes');
+  const serversContainer = document.getElementById('servers');
+  const homeBtn = document.getElementById('homeBtn');
+  const searchNavBtn = document.getElementById('searchNavBtn');
+  
+  // Update navigation
+  homeBtn.classList.add('active');
+  searchNavBtn.classList.remove('active');
+  
+  // Show home page, hide search
+  homePage.classList.add('visible');
+  homePage.classList.remove('hidden');
+  searchContainer.classList.remove('visible');
+  resultsContainer.innerHTML = '';
+  detailsContainer.innerHTML = '';
+  episodesContainer.innerHTML = '';
+  serversContainer.innerHTML = '';
+  
+  isHomePageVisible = true;
+  
+  // Load home page data if not loaded
+  if (!homePageData) {
+    loadHomePage();
+  }
+}
+
+// Show search page
+function showSearchPage() {
+  const homePage = document.getElementById('homePage');
+  const searchContainer = document.querySelector('.search-container');
+  const homeBtn = document.getElementById('homeBtn');
+  const searchNavBtn = document.getElementById('searchNavBtn');
+  
+  // Update navigation
+  homeBtn.classList.remove('active');
+  searchNavBtn.classList.add('active');
+  
+  // Hide home page, show search
+  homePage.classList.remove('visible');
+  homePage.classList.add('hidden');
+  searchContainer.classList.add('visible');
+  
+  isHomePageVisible = false;
+  
+  // Stop spotlight slider
+  stopSpotlightSlider();
+}
+
+// Load home page data and render
+async function loadHomePage() {
+  const homeContent = document.getElementById('homeContent');
+  
+  // Show loading state
+  homeContent.innerHTML = renderHomeLoading();
+  
+  try {
+    homePageData = await fetchHomePageData();
+    
+    if (!homePageData || !homePageData.status) {
+      throw new Error('Failed to load home page data');
+    }
+    
+    // Render home page
+    homeContent.innerHTML = renderHomePage(homePageData);
+    
+    // Initialize spotlight slider
+    initSpotlightSlider();
+    
+    showToast('Home page loaded successfully', 'success');
+  } catch (error) {
+    console.error('Error loading home page:', error);
+    homeContent.innerHTML = renderHomeError(error.message);
+  }
+}
+
+// Render loading state
+function renderHomeLoading() {
+  return `
+    <div class="home-section">
+      <div class="section-header">
+        <h2>🔥 Featured</h2>
+      </div>
+      <div class="spotlight-container">
+        <div class="home-skeleton" style="height: 400px; border-radius: 16px;">
+          <div class="skeleton" style="height: 100%; width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="home-section">
+      <div class="section-header">
+        <h2>📊 Top 10</h2>
+      </div>
+      <div class="home-skeleton">
+        ${Array(6).fill('<div class="skeleton-card"><div class="skeleton skeleton-img"></div></div>').join('')}
+      </div>
+    </div>
+    <div class="home-section">
+      <div class="section-header">
+        <h2>🔥 Trending</h2>
+      </div>
+      <div class="home-skeleton">
+        ${Array(6).fill('<div class="skeleton-card"><div class="skeleton skeleton-img"></div></div>').join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Render error state
+function renderHomeError(message) {
+  return `
+    <div class="home-error">
+      <div class="error-icon">😕</div>
+      <h2>Oops! Something went wrong</h2>
+      <p>${message || 'Unable to load home page data. Please try again.'}</p>
+      <button class="retry-btn" onclick="loadHomePage()">🔄 Retry</button>
+    </div>
+  `;
+}
+
+// Render complete home page
+function renderHomePage(data) {
+  let html = '';
+  
+  // Spotlight section
+  if (data.spotlight && data.spotlight.length > 0) {
+    html += renderSpotlightSection(data.spotlight);
+  }
+  
+  // Genres section
+  if (data.genres && data.genres.length > 0) {
+    html += renderGenresSection(data.genres);
+  }
+  
+  // Top 10 section
+  if (data.topTen && (data.topTen.today?.length > 0 || data.topTen.week?.length > 0 || data.topTen.month?.length > 0)) {
+    html += renderTopTenSection(data.topTen);
+  }
+  
+  // Trending section
+  if (data.trending && data.trending.length > 0) {
+    html += renderAnimeSection('📈 Trending Now', 'trending', data.trending);
+  }
+  
+  // Top Airing section
+  if (data.topAiring && data.topAiring.length > 0) {
+    html += renderAnimeSection('▶️ Top Airing', 'topAiring', data.topAiring);
+  }
+  
+  // Most Popular section
+  if (data.mostPopular && data.mostPopular.length > 0) {
+    html += renderAnimeSection('⭐ Most Popular', 'mostPopular', data.mostPopular);
+  }
+  
+  // Most Favorite section
+  if (data.mostFavorite && data.mostFavorite.length > 0) {
+    html += renderAnimeSection('❤️ Most Favorite', 'mostFavorite', data.mostFavorite);
+  }
+  
+  // Latest Completed section
+  if (data.latestCompleted && data.latestCompleted.length > 0) {
+    html += renderAnimeSection('✅ Latest Completed', 'latestCompleted', data.latestCompleted);
+  }
+  
+  // Latest Episode section
+  if (data.latestEpisode && data.latestEpisode.length > 0) {
+    html += renderAnimeSection('🎬 Latest Episodes', 'latestEpisode', data.latestEpisode);
+  }
+  
+  // New Added section
+  if (data.newAdded && data.newAdded.length > 0) {
+    html += renderAnimeSection('🆕 Newly Added', 'newAdded', data.newAdded);
+  }
+  
+  // Top Upcoming section
+  if (data.topUpcoming && data.topUpcoming.length > 0) {
+    html += renderAnimeSection('🚀 Top Upcoming', 'topUpcoming', data.topUpcoming);
+  }
+  
+  return html;
+}
+
+// Render spotlight section
+function renderSpotlightSection(spotlightList) {
+  const slides = spotlightList.map((item, index) => `
+    <div class="spotlight-slide ${index === 0 ? 'active' : ''}" data-index="${index}">
+      <img src="${item.poster}" alt="${item.title}" loading="lazy">
+      <div class="spotlight-overlay">
+        <div class="spotlight-rank">#${item.rank || index + 1}</div>
+        <h2 class="spotlight-title">${item.title}</h2>
+        <div class="spotlight-meta">
+          <span>${item.type || 'TV'}</span>
+          ${item.quality ? `<span class="quality">${item.quality}</span>` : ''}
+          <span>${item.duration || 'Unknown duration'}</span>
+          ${item.episodes?.sub > 0 ? `<span>📺 ${item.episodes.sub} eps</span>` : ''}
+        </div>
+        <p class="spotlight-synopsis">${item.synopsis?.substring(0, 200)}${item.synopsis?.length > 200 ? '...' : ''}</p>
+        <div class="spotlight-actions">
+          <button class="spotlight-btn primary" onclick="selectAnime('${item.id}', '${item.title.replace(/'/g, "\\'")}')">
+            ▶️ Watch Now
+          </button>
+          <button class="spotlight-btn secondary" onclick="selectAnime('${item.id}', '${item.title.replace(/'/g, "\\'")}')">
+            ℹ️ More Info
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  
+  const dots = spotlightList.map((_, index) => `
+    <button class="spotlight-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></button>
+  `).join('');
+  
+  return `
+    <div class="home-section">
+      <div class="spotlight-container">
+        <div class="spotlight-slider">
+          ${slides}
+          <button class="spotlight-nav prev" onclick="prevSpotlight()">❮</button>
+          <button class="spotlight-nav next" onclick="nextSpotlight()">❯</button>
+          <div class="spotlight-dots">${dots}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Render genres section
+function renderGenresSection(genres) {
+  const genreButtons = genres.map(genre => `
+    <button class="genre-tag-btn" onclick="searchByGenre('${genre.replace(/'/g, "\\'")}')">${genre}</button>
+  `).join('');
+  
+  return `
+    <div class="home-section">
+      <div class="section-header">
+        <h2>🏷️ Browse by Genre</h2>
+      </div>
+      <div class="genres-container">${genreButtons}</div>
+    </div>
+  `;
+}
+
+// Render top 10 section
+function renderTopTenSection(topTen) {
+  const renderTop10List = (list, period) => {
+    if (!list || list.length === 0) return '<p style="color: var(--text-light); text-align: center;">No data available</p>';
+    
+    return list.slice(0, 5).map((item, index) => `
+      <div class="top10-item" onclick="selectAnime('${item.id}', '${item.title.replace(/'/g, "\\'")}')">
+        <div class="top10-rank">${index + 1}</div>
+        <img src="${item.poster}" alt="${item.title}" loading="lazy">
+        <div class="top10-item-info">
+          <div class="title">${item.title}</div>
+          <div class="episodes">${item.episodes?.sub > 0 ? `${item.episodes.sub} eps` : item.type || 'TV'}</div>
+        </div>
+      </div>
+    `).join('');
+  };
+  
+  return `
+    <div class="home-section">
+      <div class="section-header">
+        <h2>📊 Top 10 Rankings</h2>
+      </div>
+      <div class="top10-section">
+        <div class="top10-category">
+          <h3>📅 Today</h3>
+          ${renderTop10List(topTen.today, 'today')}
+        </div>
+        <div class="top10-category">
+          <h3>📆 This Week</h3>
+          ${renderTop10List(topTen.week, 'week')}
+        </div>
+        <div class="top10-category">
+          <h3>🗓️ This Month</h3>
+          ${renderTop10List(topTen.month, 'month')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Render anime section
+function renderAnimeSection(title, categoryKey, animeList) {
+  const animeCards = animeList.slice(0, 12).map(anime => `
+    <div class="home-anime-card" onclick="selectAnime('${anime.id}', '${anime.title.replace(/'/g, "\\'")}')">
+      <img src="${anime.poster}" alt="${anime.title}" loading="lazy">
+      <div class="home-anime-card-content">
+        <h3>${anime.title}</h3>
+        <p>${anime.episodes?.sub > 0 ? `${anime.episodes.sub} eps` : anime.type || 'TV'}</p>
+      </div>
+    </div>
+  `).join('');
+  
+  return `
+    <div class="home-section">
+      <div class="section-header">
+        <h2>${title}</h2>
+        <button class="see-all-btn" onclick="viewAllCategory('${categoryKey}')">See All →</button>
+      </div>
+      <div class="home-anime-grid">${animeCards}</div>
+    </div>
+  `;
+}
+
+// Initialize spotlight slider
+function initSpotlightSlider() {
+  if (!homePageData?.spotlight?.length) return;
+  
+  currentSpotlightIndex = 0;
+  
+  // Auto-rotate every 5 seconds
+  spotlightInterval = setInterval(() => {
+    nextSpotlight();
+  }, 5000);
+}
+
+// Stop spotlight slider
+function stopSpotlightSlider() {
+  if (spotlightInterval) {
+    clearInterval(spotlightInterval);
+    spotlightInterval = null;
+  }
+}
+
+// Go to next spotlight slide
+function nextSpotlight() {
+  if (!homePageData?.spotlight?.length) return;
+  
+  currentSpotlightIndex = (currentSpotlightIndex + 1) % homePageData.spotlight.length;
+  updateSpotlightSlide();
+}
+
+// Go to previous spotlight slide
+function prevSpotlight() {
+  if (!homePageData?.spotlight?.length) return;
+  
+  currentSpotlightIndex = (currentSpotlightIndex - 1 + homePageData.spotlight.length) % homePageData.spotlight.length;
+  updateSpotlightSlide();
+}
+
+// Update spotlight slide display
+function updateSpotlightSlide() {
+  const slides = document.querySelectorAll('.spotlight-slide');
+  const dots = document.querySelectorAll('.spotlight-dot');
+  
+  slides.forEach((slide, index) => {
+    slide.classList.toggle('active', index === currentSpotlightIndex);
+  });
+  
+  dots.forEach((dot, index) => {
+    dot.classList.toggle('active', index === currentSpotlightIndex);
+  });
+}
+
+// View all anime in a category
+function viewAllCategory(categoryKey) {
+  console.log('View all category:', categoryKey);
+  showToast(`Showing all ${categoryKey} - Filter by provider if needed`, 'info');
+  showSearchPage();
+  searchInput.focus();
+}
+
+// Search by genre
+function searchByGenre(genre) {
+  showSearchPage();
+  searchInput.value = genre;
+  searchInput.focus();
+  searchAnime();
+}
+
+// Expose home page functions to global scope
+window.loadHomePage = loadHomePage;
+window.showHomePage = showHomePage;
+window.showSearchPage = showSearchPage;
+window.nextSpotlight = nextSpotlight;
+window.prevSpotlight = prevSpotlight;
+window.viewAllCategory = viewAllCategory;
+window.searchByGenre = searchByGenre;
+
+// ============================================
+// END HOME PAGE FUNCTIONS
 // ============================================
 
 function showToast(message, type = 'info') {
@@ -871,6 +1361,9 @@ window.selectEpisode = selectEpisode;
 function displayAnimeDetails(anime, title) {
   console.log('Displaying anime details:', anime);
   
+  // Set current anime ID for episode navigation
+  currentAnimeId = anime.id || null;
+  
   const animeTitle = anime.title || title || 'Unknown Title';
   const image = anime.image || anime.poster || anime.coverImage || 'https://via.placeholder.com/200x300';
   const japaneseTitle = anime.japaneseTitle || anime.jname || '';
@@ -1092,7 +1585,7 @@ window.playHianimeScrapStream = async function(serverId, serverType, serverName)
   }
 };
 
-// Function to display hianime-scrap stream with subtitles
+// Function to display hianime-scrap stream with subtitles using custom video player
 function displayHianimeScrapStream(streamData, serverName) {
   const videoUrl = streamData.link?.file || streamData.link?.directUrl || '';
   const tracks = streamData.tracks || [];
@@ -1111,33 +1604,22 @@ function displayHianimeScrapStream(streamData, serverName) {
     return;
   }
   
-  // Create video player container - prepend to keep server list visible below
-  let player = document.getElementById('videoPlayer');
-  if (!player) {
-    player = document.createElement('div');
-    player.id = 'videoPlayer';
-    player.className = 'video-player-section';
-    player.style.marginBottom = '20px';
-    // Prepend to keep server list visible
-    const existingPlayer = serversContainer.querySelector('#videoPlayer');
-    if (existingPlayer) {
-      existingPlayer.remove();
-    }
-    serversContainer.prepend(player);
-  } else {
-    // Move player to top if it exists
-    serversContainer.prepend(player);
+  // Remove existing custom player if any
+  const existingPlayer = document.getElementById('customVideoPlayer');
+  if (existingPlayer) {
+    existingPlayer.remove();
   }
   
-  // Build tracks HTML
-  let tracksHtml = '';
-  if (tracks.length > 0) {
-    tracksHtml = tracks.map(track => {
-      if (track.kind === 'captions' || track.kind === 'subtitles') {
-        return `<track label="${track.label}" kind="${track.kind}" src="${track.file}" ${track.default ? 'default' : ''}>`;
-      }
-      return '';
-    }).join('');
+  // Create video player container - prepend to keep server list visible below
+  let playerContainer = document.getElementById('videoPlayer');
+  if (!playerContainer) {
+    playerContainer = document.createElement('div');
+    playerContainer.id = 'videoPlayer';
+    playerContainer.className = 'video-player-section';
+    playerContainer.style.marginBottom = '20px';
+    serversContainer.prepend(playerContainer);
+  } else {
+    serversContainer.prepend(playerContainer);
   }
   
   // Show intro/outro info
@@ -1149,44 +1631,57 @@ function displayHianimeScrapStream(streamData, serverName) {
     metaInfo += `<p style="color:#ffcc00;">Skip outro: ${outro.start}s - ${outro.end}s</p>`;
   }
   
-  player.innerHTML = `
+  // Add header with server name and meta info
+  playerContainer.innerHTML = `
     <h3>Now Playing: ${serverName}</h3>
-    <video id="animeVideo" controls style="width:100%; max-height:60vh; background:#000; border-radius:8px;" crossorigin="anonymous">
-      <source src="${videoUrl}" type="application/vnd.apple.mpegurl">
-      ${tracksHtml}
-    </video>
     ${metaInfo}
-    <p style="margin-top:10px; font-size:0.9em; color:var(--text-light);">
-      <a href="${videoUrl}" target="_blank" rel="noopener noreferrer">Open video in new tab</a> | 
-      <a href="#" onclick="location.reload(); return false;">Refresh player</a>
-    </p>
   `;
   
-  const video = document.getElementById('animeVideo');
+  // Create and append custom video player
+  const player = createCustomVideoPlayer({
+    videoUrl,
+    title: serverName,
+    tracks,
+    intro,
+    outro
+  });
   
-  // Set up subtitle tracks
-  if (tracks.length > 0) {
-    tracks.forEach(track => {
-      if (track.kind === 'captions' || track.kind === 'subtitles') {
-        const trackElement = video.textTracks[0];
-        if (trackElement) {
-          trackElement.mode = track.default ? 'showing' : 'hidden';
+  playerContainer.appendChild(player);
+  
+  // Initialize the custom video player
+  customVideoInstance = initCustomVideoPlayer(player, {
+    videoUrl,
+    tracks,
+    intro,
+    outro
+  });
+  
+  // Set up episode navigation callbacks for hianime-scrap
+  const currentIndex = window.hianimeScrapServerData?.currentEpisodeIndex ?? -1;
+  const totalEpisodes = window.hianimeScrapServerData?.totalEpisodes ?? 0;
+  
+  if (customVideoInstance && window.hianimeScrapServerData?.episodes) {
+    customVideoInstance.setEpisodeCallbacks(
+      // Previous episode callback
+      currentIndex > 0 ? () => {
+        const prevEp = window.hianimeScrapServerData.episodes[currentIndex - 1];
+        if (prevEp) {
+          const epId = prevEp.id || `${window.hianimeScrapServerData.animeId}::ep=${prevEp.number}`;
+          window.hianimeScrapServerData.currentEpisodeIndex = currentIndex - 1;
+          playHianimeScrapStream(prevEp.id, window.hianimeScrapServerData.currentServerType || 'sub', prevEp.name || `Episode ${prevEp.number}`);
         }
-      }
-    });
+      } : null,
+      // Next episode callback
+      currentIndex < totalEpisodes - 1 ? () => {
+        const nextEp = window.hianimeScrapServerData.episodes[currentIndex + 1];
+        if (nextEp) {
+          const epId = nextEp.id || `${window.hianimeScrapServerData.animeId}::ep=${nextEp.number}`;
+          window.hianimeScrapServerData.currentEpisodeIndex = currentIndex + 1;
+          playHianimeScrapStream(nextEp.id, window.hianimeScrapServerData.currentServerType || 'sub', nextEp.name || `Episode ${nextEp.number}`);
+        }
+      } : null
+    );
   }
-  
-  // Check if browser supports HLS natively (Safari)
-  if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = videoUrl;
-    video.play().catch(playError => {
-      console.warn('Auto-play prevented:', playError);
-    });
-    return;
-  }
-  
-  // For other browsers, try HLS.js
-  loadHlsStream(video, videoUrl);
 }
 
 // Helper function to load HLS stream
@@ -1330,7 +1825,7 @@ function displayServers(data, episodeNumber) {
   serversContainer.innerHTML += html;
 }
 
-// Function to play video stream with HLS.js support
+// Function to play video stream with HLS.js support using custom video player
 window.playStream = async function(proxiedUrl, title) {
   if (!proxiedUrl) {
     return alert('No stream URL available');
@@ -1338,99 +1833,76 @@ window.playStream = async function(proxiedUrl, title) {
   
   console.log('Playing stream:', proxiedUrl);
   
-  // Create or reuse video player container - prepend to keep server list visible
-  let player = document.getElementById('videoPlayer');
-  if (!player) {
-    player = document.createElement('div');
-    player.id = 'videoPlayer';
-    player.style.marginBottom = '20px';
-    // Prepend to keep server list visible
-    const existingPlayer = serversContainer.querySelector('#videoPlayer');
-    if (existingPlayer) {
-      existingPlayer.remove();
-    }
-    serversContainer.prepend(player);
+  // Remove existing custom player if any
+  const existingPlayer = document.getElementById('customVideoPlayer');
+  if (existingPlayer) {
+    existingPlayer.remove();
+  }
+  
+  // Create video player container - prepend to keep server list visible
+  let playerContainer = document.getElementById('videoPlayer');
+  if (!playerContainer) {
+    playerContainer = document.createElement('div');
+    playerContainer.id = 'videoPlayer';
+    playerContainer.className = 'video-player-section';
+    playerContainer.style.marginBottom = '20px';
+    serversContainer.prepend(playerContainer);
   } else {
-    // Move player to top if it exists
-    serversContainer.prepend(player);
+    serversContainer.prepend(playerContainer);
   }
   
-  player.innerHTML = `
-    <h3>Now Playing: ${title}</h3>
-    <video id="animeVideo" controls style="width:100%; max-height:60vh; background:#000; border-radius:8px;"></video>
-    <p style="margin-top:10px; font-size:0.9em; color:var(--text-light);">
-      <a href="${proxiedUrl}" target="_blank" rel="noopener noreferrer">Open video in new tab</a> | 
-      <a href="#" onclick="location.reload(); return false;">Refresh player</a>
-    </p>
-  `;
+  // Add header with title
+  playerContainer.innerHTML = `<h3>Now Playing: ${title}</h3>`;
   
-  const video = document.getElementById('animeVideo');
+  // Create and append custom video player
+  const player = createCustomVideoPlayer({
+    videoUrl: proxiedUrl,
+    title: title,
+    tracks: [],
+    intro: { start: 0, end: 0 },
+    outro: { start: 0, end: 0 }
+  });
   
-  // Check if browser supports HLS natively (Safari)
-  if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = proxiedUrl;
-    video.play().catch(playError => {
-      console.warn('Auto-play prevented:', playError);
-    });
-    return;
-  }
+  playerContainer.appendChild(player);
   
-  // For other browsers, try HLS.js
-  try {
-    // Load HLS.js if not already loaded
-    if (!window.Hls) {
-      await new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js';
-        script.onload = resolve;
-        script.onerror = () => reject(new Error('Failed to load HLS.js'));
-        document.head.appendChild(script);
-      });
-    }
-    
-    if (window.Hls) {
-      const hls = new window.Hls({
-        enableWorker: true,
-        lowLatencyMode: true
-      });
-      
-      hls.loadSource(proxiedUrl);
-      hls.attachMedia(video);
-      
-      hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(playError => {
-          console.warn('Auto-play prevented:', playError);
-        });
-      });
-      
-      hls.on(window.Hls.Events.ERROR, (event, data) => {
-        console.error('HLS error:', data);
-        
-        if (data.fatal) {
-          switch (data.type) {
-            case window.Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
-              break;
-            case window.Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              // Fatal error - open in new tab
-              window.open(proxiedUrl, '_blank');
-              return;
-          }
+  // Initialize the custom video player
+  customVideoInstance = initCustomVideoPlayer(player, {
+    videoUrl: proxiedUrl,
+    tracks: [],
+    intro: { start: 0, end: 0 },
+    outro: { start: 0, end: 0 }
+  });
+  
+  // Set up episode navigation callbacks for animekai/animepahe
+  const currentIndex = currentEpisodes.findIndex(ep => {
+    const epNum = ep.number || ep.episode || ep.ep || 0;
+    const currentEpNum = parseInt(document.querySelector('.episode-btn.active')?.textContent?.trim() || '0');
+    return epNum === currentEpNum;
+  });
+  
+  if (customVideoInstance && currentEpisodes.length > 0) {
+    customVideoInstance.setEpisodeCallbacks(
+      // Previous episode callback
+      currentIndex > 0 ? () => {
+        const prevEp = currentEpisodes[currentIndex - 1];
+        if (prevEp) {
+          const epId = prevEp.id || `${currentAnimeId}-episode-${prevEp.number || currentIndex}`;
+          const epNum = prevEp.number || prevEp.episode || prevEp.ep || currentIndex;
+          selectEpisode(epId, String(epNum));
         }
-      });
-      
-      return;
-    }
-  } catch (hlsError) {
-    console.warn('HLS playback failed:', hlsError);
+      } : null,
+      // Next episode callback
+      currentIndex < currentEpisodes.length - 1 ? () => {
+        const nextEp = currentEpisodes[currentIndex + 1];
+        if (nextEp) {
+          const epId = nextEp.id || `${currentAnimeId}-episode-${nextEp.number || currentIndex + 2}`;
+          const epNum = nextEp.number || nextEp.episode || nextEp.ep || currentIndex + 2;
+          selectEpisode(epId, String(epNum));
+        }
+      } : null
+    );
   }
-  
-  // Fallback: open in new tab
-  window.open(proxiedUrl, '_blank');
-};
+}
 
 // Event Listeners
 searchBtn.addEventListener('click', searchAnime);
@@ -1449,14 +1921,16 @@ providerSelect.addEventListener('change', () => {
   serversContainer.innerHTML = '';
   currentAnimeId = null;
   currentEpisodes = [];
+  // Clear home page data to force reload with new provider
+  homePageData = null;
 });
 
-// Initialize - show welcome message
-detailsContainer.innerHTML = `
-  <div style="text-align:center; padding:40px;">
-    <h2>Welcome to AnimeFlix! 🎌</h2>
-    <p style="margin-top:20px;">Search for your favorite anime above to get started.</p>
-    <p style="color:var(--text-light); margin-top:10px;">Select a provider from the dropdown and enter a search term.</p>
-  </div>
-`;
+// Home and Search navigation buttons
+document.getElementById('homeBtn').addEventListener('click', showHomePage);
+document.getElementById('searchNavBtn').addEventListener('click', showSearchPage);
+
+// Initialize - show home page
+document.addEventListener('DOMContentLoaded', () => {
+  showHomePage();
+});
 
