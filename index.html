@@ -5,14 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AnimeFlix - Watch Anime Online</title>
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <script type="module" crossorigin src="/AnimeFlix/assets/index-DtSPdExD.js"></script>
-    <link rel="stylesheet" crossorigin href="/AnimeFlix/assets/index-DZ2dM64p.css">
+    <script type="module" crossorigin src="/AnimeFlix/assets/index-BaBp-mz0.js"></script>
+    <link rel="stylesheet" crossorigin href="/AnimeFlix/assets/index-D45FT6j6.css">
   </head>
   <body>
     <div id="app">
       <div class="header">
         <h1>🎌 AnimeFlix</h1>
         <p>Stream your favorite anime with ease</p>
+      </div>
+
+      <div class="header-nav">
+        <button id="homeBtn" class="nav-btn active">
+          <span class="nav-icon">🏠</span> Home
+        </button>
+        <button id="searchNavBtn" class="nav-btn">
+          <span class="nav-icon">🔍</span> Search
+        </button>
       </div>
 
       <div class="search-container">
@@ -39,6 +48,12 @@
 
       <div id="servers"></div>
     </div>
+
+    <!-- Home Page Section -->
+    <div id="homePage" class="home-page hidden">
+      <div id="homeContent"></div>
+    </div>
+
   </body>
 </html>
 
