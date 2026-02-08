@@ -2149,7 +2149,7 @@ body {
   padding: 25px 15px 15px;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.3s ease;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
   z-index: 20;
 }
 
@@ -2159,8 +2159,82 @@ body {
   visibility: visible;
 }
 
+/* Hide cursor when controls are hidden during playback */
 .custom-video-player.hide-cursor {
-  cursor: none;
+  cursor: none !important;
+}
+
+/* Hide all controls (player controls, progress bar) when controls are hidden */
+.custom-video-player.hide-cursor .player-controls,
+.custom-video-player:not(.show-controls):not(:hover) .player-controls {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Hide progress bar when controls are hidden */
+.custom-video-player.hide-cursor .progress-container,
+.custom-video-player:not(.show-controls):not(:hover) .progress-container {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Fullscreen mode - always use JS control, not hover */
+.custom-video-player:fullscreen,
+.custom-video-player:-webkit-full-screen,
+.custom-video-player:-moz-full-screen,
+.custom-video-player.is-fullscreen {
+  cursor: none !important;
+}
+
+.custom-video-player:fullscreen .player-controls,
+.custom-video-player:-webkit-full-screen .player-controls,
+.custom-video-player:-moz-full-screen .player-controls,
+.custom-video-player.is-fullscreen .player-controls,
+.custom-video-player:fullscreen:hover .player-controls,
+.custom-video-player:-webkit-full-screen:hover .player-controls,
+.custom-video-player:-moz-full-screen:hover .player-controls,
+.custom-video-player.is-fullscreen:hover .player-controls {
+  /* Always hidden in fullscreen unless show-controls class is present */
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.custom-video-player:fullscreen.show-controls .player-controls,
+.custom-video-player:-webkit-full-screen.show-controls .player-controls,
+.custom-video-player:-moz-full-screen.show-controls .player-controls,
+.custom-video-player.is-fullscreen.show-controls .player-controls,
+.custom-video-player:fullscreen.show-controls:hover .player-controls,
+.custom-video-player:-webkit-full-screen.show-controls:hover .player-controls,
+.custom-video-player:-moz-full-screen.show-controls:hover .player-controls,
+.custom-video-player.is-fullscreen.show-controls:hover .player-controls {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.custom-video-player:fullscreen .progress-container,
+.custom-video-player:-webkit-full-screen .progress-container,
+.custom-video-player:-moz-full-screen .progress-container,
+.custom-video-player.is-fullscreen .progress-container,
+.custom-video-player:fullscreen:hover .progress-container,
+.custom-video-player:-webkit-full-screen:hover .progress-container,
+.custom-video-player:-moz-full-screen:hover .progress-container,
+.custom-video-player.is-fullscreen:hover .progress-container {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.custom-video-player:fullscreen.show-controls .progress-container,
+.custom-video-player:-webkit-full-screen.show-controls .progress-container,
+.custom-video-player:-moz-full-screen.show-controls .progress-container,
+.custom-video-player.is-fullscreen.show-controls .progress-container,
+.custom-video-player:fullscreen.show-controls:hover .progress-container,
+.custom-video-player:-webkit-full-screen.show-controls:hover .progress-container,
+.custom-video-player:-moz-full-screen.show-controls:hover .progress-container,
+.custom-video-player.is-fullscreen.show-controls:hover .progress-container {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Progress Bar */
