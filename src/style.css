@@ -14,5 +14,6 @@
 
 /* Component Styles */
 @import './css/video-player.css';
+@import './css/m3u-player.css';
 @import './css/components.css';
 

@@ -3,6 +3,7 @@ import './js/smooth-player.js';
 import { fetchAnimeInfo, fetchAnimeEpisodes, buildUrl, safeFetch } from './js/animeService.js';
 import { createDefaultVideoPlayer, initDefaultVideoPlayer } from './js/defaultPlayer.js';
 import { createCustomVideoPlayer, initCustomVideoPlayer, removeSubtitle } from './js/customPlayer.js';
+import { createM3UPlayer, initM3UPlayer } from './js/m3uPlayer.js';
 
 // Proxy for streaming (NekoProxy) - used for bypassing CORS and geo-restrictions
 const PROXY_BASE = 'https://renewed-georgeanne-nekonode-1aa70c0c.koyeb.app';
@@ -29,16 +30,26 @@ let customSubtitles = []; // Store custom uploaded subtitles
 // VIDEO PLAYER TOGGLE STATE
 // ============================================
 
-// Get saved preference or default to custom player
-function getUseCustomPlayer() {
-  const saved = localStorage.getItem('useCustomPlayer');
-  return saved === null ? true : saved === 'true';
+// Player types: 'custom', 'default', 'm3u'
+function getPlayerType() {
+  const saved = localStorage.getItem('playerType');
+  return saved || 'custom'; // default to custom player
 }
 
-// Save player preference
+function setPlayerType(type) {
+  localStorage.setItem('playerType', type);
+  updatePlayerTypeUI();
+}
+
+// Get saved preference or default to custom player (legacy support)
+function getUseCustomPlayer() {
+  const playerType = getPlayerType();
+  return playerType === 'custom' || playerType === 'm3u';
+}
+
+// Save player preference (legacy support)
 function setUseCustomPlayer(value) {
-  localStorage.setItem('useCustomPlayer', String(value));
-  updateToggleUI();
+  setPlayerType(value ? 'custom' : 'default');
 }
 
 // Global function to handle player toggle
@@ -57,6 +68,43 @@ window.handlePlayerToggle = function() {
     }, 50);
   }
 };
+
+// Cycle through player types: custom -> m3u -> default -> custom
+window.cyclePlayerType = function() {
+  const currentType = getPlayerType();
+  let nextType;
+  switch (currentType) {
+    case 'custom':
+      nextType = 'm3u';
+      break;
+    case 'm3u':
+      nextType = 'default';
+      break;
+    default:
+      nextType = 'custom';
+  }
+  setPlayerType(nextType);
+  showToast(`Switched to ${nextType === 'custom' ? 'Custom' : nextType === 'm3u' ? 'M3U' : 'Default'} Player`, 'success');
+  
+  // Reload video if currently playing
+  setTimeout(() => {
+    reloadCurrentVideo();
+  }, 50);
+};
+
+function updatePlayerTypeUI() {
+  const playerType = getPlayerType();
+  const toggle = document.getElementById('playerToggle');
+  const playerLabel = document.getElementById('playerTypeLabel');
+  
+  if (toggle) {
+    toggle.checked = playerType === 'custom' || playerType === 'm3u';
+  }
+  
+  if (playerLabel) {
+    playerLabel.textContent = playerType === 'custom' ? '🎬 Custom' : playerType === 'm3u' ? '📋 M3U' : '🌐 Default';
+  }
+}
 
 // Function to reload current video with the selected player type
 function reloadCurrentVideo() {
@@ -93,17 +141,14 @@ function reloadCurrentVideo() {
 // Update toggle UI to reflect current state
 function updateToggleUI() {
   const toggle = document.getElementById('playerToggle');
+  const playerLabel = document.getElementById('playerTypeLabel');
+  
   if (toggle) {
-    const isCustom = getUseCustomPlayer();
-    toggle.checked = isCustom;
-    
-    // Update labels
-    const customLabel = toggle.parentElement.querySelector('.toggle-custom');
-    const defaultLabel = toggle.parentElement.querySelector('.toggle-default');
-    if (customLabel && defaultLabel) {
-      customLabel.style.opacity = isCustom ? '1' : '0.5';
-      defaultLabel.style.opacity = isCustom ? '0.5' : '1';
-    }
+    toggle.checked = playerType === 'custom' || playerType === 'm3u';
+  }
+  
+  if (playerLabel) {
+    playerLabel.textContent = playerType === 'custom' ? '🎬 Custom' : playerType === 'm3u' ? '📋 M3U' : '🌐 Default';
   }
 }
 
@@ -960,9 +1005,7 @@ function displayAnimeDetails(anime, title) {
           <p><strong>Type:</strong> ${type}</p>
           ${status ? `<p><strong>Status:</strong> ${status}</p>` : ''}
           ${genres.length > 0 ? `<p><strong>Genres:</strong> ${genres.join(', ')}</p>` : ''}
-          <p><strong>Episodes
-
-:</strong> ${totalEpisodes}</p>
+          <p><strong>Episodes:</strong> ${totalEpisodes}</p>
           <p><strong>Description:</strong> ${description}</p>
           ${url ? `<p><a href="${url}" target="_blank" rel="noopener noreferrer" class="watch-link">View on Provider →</a></p>` : ''}
         </div>
@@ -1015,19 +1058,19 @@ function displayEpisodes(episodes) {
 
 // Function to display hianime-scrap servers with sub/dub/raw tabs
 function displayHianimeScrapServers(data, episodeNumber, episodeId) {
-  const isCustom = getUseCustomPlayer();
+  const playerType = getPlayerType();
   
   // Add toggle switch header
   serversContainer.innerHTML = `
     <div class="player-toggle-header">
       <h3>Servers for Episode ${episodeNumber}</h3>
       <div class="player-toggle">
-        <span class="toggle-custom">🎬 Custom</span>
+        <span id="playerTypeLabel" class="toggle-label">${playerType === 'custom' ? '🎬 Custom' : playerType === 'm3u' ? '📋 M3U' : '🌐 Default'}</span>
+        <button class="player-cycle-btn" onclick="cyclePlayerType()" title="Click to cycle player types">🔄</button>
         <label class="toggle-switch" onclick="handlePlayerToggle()">
-          <input type="checkbox" id="playerToggle" ${isCustom ? 'checked' : ''}>
+          <input type="checkbox" id="playerToggle" ${playerType === 'custom' || playerType === 'm3u' ? 'checked' : ''}>
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-default">🌐 Default</span>
       </div>
     </div>
   `;
@@ -1184,7 +1227,7 @@ function displayHianimeScrapStream(streamData, serverName) {
   const tracks = streamData.tracks || [];
   const intro = streamData.intro || { start: 0, end: 0 };
   const outro = streamData.outro || { start: 0, end: 0 };
-  const useCustom = getUseCustomPlayer();
+  const playerType = getPlayerType();
   
   if (!videoUrl) {
     // Show error but keep server list visible
@@ -1206,6 +1249,10 @@ function displayHianimeScrapStream(streamData, serverName) {
   const existingDefaultPlayer = document.getElementById('defaultVideoPlayer');
   if (existingDefaultPlayer) {
     existingDefaultPlayer.remove();
+  }
+  const existingM3UPlayer = document.getElementById('m3uVideoPlayer');
+  if (existingM3UPlayer) {
+    existingM3UPlayer.remove();
   }
   
   // Create video player container - prepend to keep server list visible below
@@ -1238,7 +1285,20 @@ function displayHianimeScrapStream(streamData, serverName) {
     ${metaInfo}
   `;
   
-  if (useCustom) {
+  if (playerType === 'm3u') {
+    // Create and append M3U video player
+    const player = createM3UPlayer({
+      videoUrl,
+      title: serverName
+    });
+    
+    playerContainer.appendChild(player);
+    
+    // Initialize the M3U video player
+    customVideoInstance = initM3UPlayer(player, {
+      videoUrl
+    });
+  } else if (playerType === 'custom') {
     // Create and append custom video player
     const player = createCustomVideoPlayer({
       videoUrl,
@@ -1302,19 +1362,19 @@ function displayHianimeScrapStream(streamData, serverName) {
 
 // Function to display servers/streaming options (for animekai and animepahe)
 function displayServers(data, episodeNumber) {
-  const isCustom = getUseCustomPlayer();
+  const playerType = getPlayerType();
   
   // Add toggle switch header
   serversContainer.innerHTML = `
     <div class="player-toggle-header">
       <h3>Servers for Episode ${episodeNumber}</h3>
       <div class="player-toggle">
-        <span class="toggle-custom">🎬 Custom</span>
+        <span id="playerTypeLabel" class="toggle-label">${playerType === 'custom' ? '🎬 Custom' : playerType === 'm3u' ? '📋 M3U' : '🌐 Default'}</span>
+        <button class="player-cycle-btn" onclick="cyclePlayerType()" title="Click to cycle player types">🔄</button>
         <label class="toggle-switch" onclick="handlePlayerToggle()">
-          <input type="checkbox" id="playerToggle" ${isCustom ? 'checked' : ''}>
+          <input type="checkbox" id="playerToggle" ${playerType === 'custom' || playerType === 'm3u' ? 'checked' : ''}>
           <span class="toggle-slider"></span>
         </label>
-        <span class="toggle-default">🌐 Default</span>
       </div>
     </div>
   `;
@@ -1404,7 +1464,7 @@ window.playStream = async function(proxiedUrl, title) {
   
   console.log('Playing stream:', proxiedUrl);
   
-  const useCustom = getUseCustomPlayer();
+  const playerType = getPlayerType();
   
   // Remove existing players
   const existingCustomPlayer = document.getElementById('customVideoPlayer');
@@ -1414,6 +1474,10 @@ window.playStream = async function(proxiedUrl, title) {
   const existingDefaultPlayer = document.getElementById('defaultVideoPlayer');
   if (existingDefaultPlayer) {
     existingDefaultPlayer.remove();
+  }
+  const existingM3UPlayer = document.getElementById('m3uVideoPlayer');
+  if (existingM3UPlayer) {
+    existingM3UPlayer.remove();
   }
   
   // Create video player container - prepend to keep server list visible
@@ -1434,7 +1498,20 @@ window.playStream = async function(proxiedUrl, title) {
   // Add header with title
   playerContainer.innerHTML = `<h3>Now Playing: ${title}</h3>`;
   
-  if (useCustom) {
+  if (playerType === 'm3u') {
+    // Create and append M3U video player
+    const player = createM3UPlayer({
+      videoUrl: proxiedUrl,
+      title: title
+    });
+    
+    playerContainer.appendChild(player);
+    
+    // Initialize the M3U video player
+    customVideoInstance = initM3UPlayer(player, {
+      videoUrl: proxiedUrl
+    });
+  } else if (playerType === 'custom') {
     // Create and append custom video player
     const player = createCustomVideoPlayer({
       videoUrl: proxiedUrl,
