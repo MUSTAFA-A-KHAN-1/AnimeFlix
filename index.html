@@ -3,57 +3,93 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AnimeFlix - Stream your favorite anime online with ease. Watch anime in high quality with our custom player." />
+    <meta name="theme-color" content="#1a1a2e" />
+    <meta name="color-scheme" content="dark" />
     <title>AnimeFlix - Watch Anime Online</title>
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <script type="module" crossorigin src="/AnimeFlix/assets/index-HcSAA87_.js"></script>
-    <link rel="stylesheet" crossorigin href="/AnimeFlix/assets/index-DcU0abrG.css">
+    <script type="module" crossorigin src="/AnimeFlix/assets/index-Lc0vz_9C.js"></script>
+    <link rel="stylesheet" crossorigin href="/AnimeFlix/assets/index-hlD0NH9G.css">
   </head>
   <body>
+    <!-- Skip Link for Accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
     <div id="app">
-      <div class="header">
+      <header class="header" role="banner">
         <h1>🎌 AnimeFlix</h1>
         <p>Stream your favorite anime with ease</p>
-      </div>
+      </header>
 
-      <div class="header-nav">
-        <button id="homeBtn" class="nav-btn active">
-          <span class="nav-icon">🏠</span> Home
+      <nav class="header-nav" role="navigation" aria-label="Main navigation">
+        <button id="homeBtn" class="nav-btn active" aria-current="page">
+          <span class="nav-icon" aria-hidden="true">🏠</span>
+          <span>Home</span>
         </button>
         <button id="searchNavBtn" class="nav-btn">
-          <span class="nav-icon">🔍</span> Search
+          <span class="nav-icon" aria-hidden="true">🔍</span>
+          <span>Search</span>
         </button>
-      </div>
+      </nav>
 
-      <div class="search-container">
+      <div class="search-container" role="search" aria-label="Anime search">
+        <label for="providerSelect" class="visually-hidden">Select anime provider</label>
         <select id="providerSelect" aria-label="Provider">
           <option value="hianime-scrap">HiAnime Scrap</option>
           <option value="animekai">AnimeKai (Hianime)</option>
           <option value="animepahe">AnimePahe</option>
         </select>
 
+        <label for="searchInput" class="visually-hidden">Search anime</label>
         <input 
           type="text" 
           id="searchInput" 
           placeholder="Search anime (e.g., Naruto, Attack on Titan)..."
           autocomplete="off"
+          aria-label="Search anime"
         />
-        <button id="searchBtn">Search</button>
+        <button id="searchBtn" type="button">Search</button>
       </div>
 
-      <div id="results"></div>
+      <main id="main-content" role="main">
+        <div id="results" aria-live="polite" aria-label="Search results"></div>
 
-      <div id="details"></div>
+        <div id="details" aria-live="polite" aria-label="Anime details"></div>
 
-      <div id="episodes"></div>
+        <div id="episodes" aria-live="polite" aria-label="Episodes list"></div>
 
-      <div id="servers"></div>
+        <div id="servers" aria-live="polite" aria-label="Streaming servers"></div>
+      </main>
     </div>
 
     <!-- Home Page Section -->
-    <div id="homePage" class="home-page hidden">
-      <div id="homeContent"></div>
+    <div id="homePage" class="home-page hidden" role="region" aria-label="Home page">
+      <div id="homeContent" aria-live="polite"></div>
     </div>
 
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" role="status" aria-live="assertive" aria-label="Notifications"></div>
+
+    <!-- Loading Spinner -->
+    <div class="spinner" role="status" aria-label="Loading" hidden>
+      <span class="visually-hidden">Loading...</span>
+    </div>
+
+    
+    <style>
+      /* Visually Hidden Utility for Screen Readers */
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
   </body>
 </html>
 
