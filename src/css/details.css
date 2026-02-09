@@ -1,22 +1,24 @@
 /* ============================================
    DETAILS, EPISODES & SERVERS
+   Mobile-First Responsive Design
    ============================================ */
 
-/* Anime Details */
+/* ===== ANIME DETAILS ===== */
 #details {
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
   border-left: 4px solid var(--accent);
-  border-radius: 12px;
-  padding: 30px;
-  margin-bottom: 30px;
-  animation: fadeInUp 0.6s ease-out;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+  animation: fadeInUp var(--duration-slow) ease-out;
+  width: 100%;
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(var(--space-8));
   }
   to {
     opacity: 1;
@@ -29,20 +31,24 @@
   flex-direction: column;
 }
 
+/* ===== ANIME HEADER - MOBILE FIRST ===== */
 .anime-header {
   display: flex;
-  gap: 30px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+  text-align: center;
 }
 
 .anime-header img {
-  width: 200px;
-  height: 300px;
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 2/3;
   object-fit: cover;
-  border-radius: 12px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s ease;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  transition: transform var(--duration-normal) var(--ease-smooth);
 }
 
 .anime-header img:hover {
@@ -51,111 +57,137 @@
 
 .anime-info {
   flex: 1;
-  min-width: 300px;
+  width: 100%;
 }
 
 .anime-info h2 {
-  font-size: 2em;
-  margin-bottom: 15px;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-4);
   background: linear-gradient(135deg, var(--text), var(--accent));
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  line-height: 1.3;
 }
 
 .anime-info p {
-  margin: 10px 0;
+  margin: var(--space-3) 0;
   line-height: 1.6;
   color: var(--text-light);
+  font-size: var(--text-sm);
 }
 
 .anime-info strong {
   color: var(--text);
 }
 
+/* ===== GENRE TAGS ===== */
 .genre-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 15px 0;
+  gap: var(--space-2);
+  justify-content: center;
+  margin: var(--space-4) 0;
 }
 
 .genre-tag {
-  padding: 5px 12px;
+  padding: var(--space-2) var(--space-3);
   background: rgba(233, 69, 96, 0.2);
   border: 1px solid var(--accent);
-  border-radius: 20px;
-  font-size: 0.85em;
-  transition: all 0.3s ease;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-smooth);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .genre-tag:hover {
   background: var(--accent);
   color: white;
+  transform: translateY(-2px);
 }
 
-/* Watch Link */
+/* ===== WATCH LINK ===== */
 .watch-link {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 15px;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, var(--accent), #ff6b6b);
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  width: 100%;
+  background: var(--accent-gradient);
   color: white;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   text-decoration: none;
-  font-weight: bold;
-  transition: all 0.3s ease;
+  font-weight: 700;
+  font-size: var(--text-base);
+  min-height: var(--touch-comfortable);
+  transition: all var(--duration-normal) var(--ease-smooth);
+  box-shadow: 0 4px 15px var(--accent-glow);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .watch-link:hover {
-  transform: translateX(8px);
-  box-shadow: 0 10px 30px var(--accent-glow);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--accent-glow);
+}
+
+.watch-link:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* ============================================
-   EPISODES
+   EPISODES - MOBILE FIRST
    ============================================ */
 
 #episodes {
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
   border-left: 4px solid var(--accent);
-  border-radius: 12px;
-  padding: 25px;
-  margin-bottom: 30px;
-  animation: fadeInUp 0.6s ease-out 0.1s both;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+  animation: fadeInUp var(--duration-slow) ease-out 0.1s both;
 }
 
 #episodes h3 {
   color: var(--accent);
-  margin-bottom: 20px;
+  margin-bottom: var(--space-4);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
 }
 
 #episodes h3::before {
   content: '📺';
+  font-size: 1.2em;
 }
 
+/* ===== EPISODES CONTROLS ===== */
 .episodes-controls {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
   flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .filter-btn {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   background: rgba(233, 69, 96, 0.2);
   border: 1px solid var(--accent);
   color: var(--text);
-  border-radius: 20px;
+  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9em;
+  transition: all var(--duration-normal) var(--ease-smooth);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  min-height: var(--touch-min);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .filter-btn:hover,
@@ -164,24 +196,33 @@
   color: white;
 }
 
+/* ===== EPISODES GRID ===== */
 .episodes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 10px;
-  max-height: 400px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  max-height: 300px;
   overflow-y: auto;
-  padding-right: 10px;
+  padding-right: var(--space-2);
+  -webkit-overflow-scrolling: touch;
 }
 
 .episode-btn {
-  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-2);
   background: rgba(233, 69, 96, 0.15);
   border: 1px solid rgba(233, 69, 96, 0.3);
   color: var(--text);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  font-weight: bold;
+  transition: all var(--duration-normal) var(--ease-smooth);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  min-height: var(--touch-min);
+  -webkit-tap-highlight-color: transparent;
   position: relative;
   overflow: hidden;
 }
@@ -189,31 +230,32 @@
 .episode-btn::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-fast) var(--ease-smooth);
 }
 
 .episode-btn:hover {
   background: var(--accent);
   color: white;
-  transform: scale(1.08);
+  transform: scale(1.05);
   border-color: var(--accent);
-  box-shadow: 0 5px 20px var(--accent-glow);
+  box-shadow: 0 4px 15px var(--accent-glow);
 }
 
 .episode-btn:hover::before {
   opacity: 1;
 }
 
+.episode-btn:active {
+  transform: scale(0.98);
+}
+
 .episode-btn.active {
   background: var(--accent);
   color: white;
-  box-shadow: 0 0 20px var(--accent-glow);
+  box-shadow: 0 0 15px var(--accent-glow);
 }
 
 .episode-btn.filler {
@@ -223,122 +265,137 @@
 
 .episode-btn.filler:hover {
   background: rgba(255, 204, 0, 0.3);
-  box-shadow: 0 5px 20px rgba(255, 204, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 204, 0, 0.3);
 }
 
 .episode-btn small {
   display: block;
-  font-size: 0.65em;
+  font-size: calc(var(--text-xs) * 0.75);
   opacity: 0.8;
-  margin-top: 3px;
+  margin-top: var(--space-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* ============================================
-   SERVERS
+   SERVERS - MOBILE FIRST
    ============================================ */
 
 #servers {
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
   border-left: 4px solid var(--accent);
-  border-radius: 12px;
-  padding: 25px;
-  animation: fadeInUp 0.6s ease-out 0.2s both;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  animation: fadeInUp var(--duration-slow) ease-out 0.2s both;
 }
 
 #servers h3 {
   color: var(--accent);
-  margin-bottom: 20px;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
 }
 
 #servers h3::before {
   content: '🎬';
+  font-size: 1.2em;
+  margin-right: var(--space-2);
 }
 
 .servers-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 15px;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
 }
 
 .server-option {
   background: rgba(233, 69, 96, 0.1);
   border: 1px solid rgba(233, 69, 96, 0.3);
-  border-radius: 10px;
-  padding: 18px;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  transition: all var(--duration-normal) var(--ease-smooth);
 }
 
 .server-option:hover {
   background: rgba(233, 69, 96, 0.2);
-  transform: translateX(8px);
+  transform: translateX(4px);
   border-color: var(--accent);
-  box-shadow: 0 5px 25px rgba(233, 69, 96, 0.2);
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.2);
 }
 
 .server-option strong {
   color: var(--accent);
   display: block;
-  margin-bottom: 10px;
-  font-size: 1.1em;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-base);
 }
 
 .server-option p {
-  margin: 8px 0;
+  margin: var(--space-2) 0;
   color: var(--text-light);
-  font-size: 0.9em;
+  font-size: var(--text-sm);
 }
 
 .server-option a {
   color: var(--accent);
   text-decoration: none;
-  font-weight: bold;
-  transition: all 0.3s ease;
+  font-weight: 600;
+  transition: all var(--duration-fast) var(--ease-smooth);
   display: inline-block;
 }
 
 .server-option a:hover {
-  color: #ff6b6b;
+  color: var(--accent-light);
   transform: translateX(3px);
 }
 
 .play-btn {
-  padding: 10px 18px;
-  background: linear-gradient(135deg, var(--accent), #ff6b6b);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-gradient);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-weight: bold;
-  margin-top: 10px;
-  transition: all 0.3s ease;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  margin-top: var(--space-3);
+  min-height: var(--touch-comfortable);
+  width: 100%;
+  transition: all var(--duration-normal) var(--ease-smooth);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .play-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 25px var(--accent-glow);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--accent-glow);
 }
 
-/* Server tabs for hianime-scrap */
+/* ===== SERVER TABS ===== */
 .servers-tabs {
   display: flex;
-  gap: 5px;
-  margin-bottom: 20px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
   flex-wrap: wrap;
 }
 
 .server-tab {
-  padding: 12px 24px;
+  padding: var(--space-3) var(--space-4);
   background: rgba(233, 69, 96, 0.2);
   border: 1px solid var(--accent);
   color: var(--text);
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: bold;
+  transition: all var(--duration-normal) var(--ease-smooth);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  min-height: var(--touch-min);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .server-tab:hover {
@@ -347,9 +404,9 @@
 }
 
 .server-tab.active {
-  background: linear-gradient(135deg, var(--accent), #ff6b6b);
+  background: var(--accent-gradient);
   color: white;
-  box-shadow: 0 -5px 20px var(--accent-glow);
+  box-shadow: 0 -4px 15px var(--accent-glow);
 }
 
 /* ============================================
@@ -358,24 +415,39 @@
 
 .player-toggle-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 20px;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: rgba(233, 69, 96, 0.1);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(233, 69, 96, 0.2);
 }
 
 .player-toggle {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.player-toggle-label {
+  font-size: var(--text-sm);
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.player-toggle-options {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .toggle-custom,
 .toggle-default {
-  font-size: 0.85em;
+  font-size: var(--text-xs);
   color: var(--text-light);
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-fast) var(--ease-smooth);
 }
 
 .toggle-custom {
@@ -389,7 +461,7 @@
 .toggle-switch {
   position: relative;
   display: inline-block;
-  width: 56px;
+  width: 52px;
   height: 28px;
 }
 
@@ -402,12 +474,9 @@
 .toggle-slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: rgba(255, 255, 255, 0.2);
-  transition: 0.4s;
+  transition: all var(--duration-normal) var(--ease-smooth);
   border-radius: 28px;
   border: 2px solid rgba(255, 255, 255, 0.3);
 }
@@ -420,7 +489,7 @@
   left: 2px;
   bottom: 2px;
   background-color: white;
-  transition: 0.4s;
+  transition: all var(--duration-normal) var(--ease-smooth);
   border-radius: 50%;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
@@ -431,54 +500,122 @@
 }
 
 .toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(28px);
+  transform: translateX(24px);
 }
 
 .toggle-switch input:focus + .toggle-slider {
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
-/* Responsive toggle */
-@media (max-width: 540px) {
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Large Mobile (480px - 767px) */
+@media (min-width: 480px) {
+  #details {
+    padding: var(--space-6);
+  }
+  
+  .anime-header img {
+    max-width: 180px;
+  }
+  
+  .episodes-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-3);
+  }
+  
+  .servers-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .play-btn {
+    width: auto;
+  }
+}
+
+/* Tablet (768px - 1023px) */
+@media (min-width: 768px) {
+  #details {
+    padding: var(--space-8);
+    margin-bottom: var(--space-8);
+  }
+  
+  .anime-header {
+    flex-direction: row;
+    text-align: left;
+    gap: var(--space-6);
+  }
+  
+  .anime-header img {
+    width: 200px;
+    max-width: none;
+  }
+  
+  .anime-info {
+    text-align: left;
+  }
+  
+  .anime-info h2 {
+    font-size: var(--text-2xl);
+  }
+  
+  .genre-tags {
+    justify-content: flex-start;
+  }
+  
+  .watch-link {
+    width: auto;
+    padding: var(--space-4) var(--space-8);
+  }
+  
+  #episodes {
+    padding: var(--space-6);
+    margin-bottom: var(--space-8);
+  }
+  
+  .episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: var(--space-3);
+    max-height: 400px;
+  }
+  
+  .episode-btn {
+    padding: var(--space-3);
+  }
+  
+  #servers {
+    padding: var(--space-6);
+  }
+  
+  .servers-list {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  
   .player-toggle-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
   }
   
   .player-toggle {
-    width: 100%;
     justify-content: flex-end;
   }
 }
 
-/* Responsive for Details */
-@media (max-width: 768px) {
-  .anime-header {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .anime-header img {
-    width: 180px;
-    height: 270px;
-  }
-
-  .header h1 {
-    font-size: 2.2em;
-  }
-
+/* Desktop (1024px - 1279px) */
+@media (min-width: 1024px) {
   .episodes-grid {
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  }
-
-  .servers-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   }
 }
 
-@media (max-width: 480px) {
-  .header h1 {
-    font-size: 1.8em;
+/* Large Desktop (1280px+) */
+@media (min-width: 1280px) {
+  .episodes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   }
 }
 

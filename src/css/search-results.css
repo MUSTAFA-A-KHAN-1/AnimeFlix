@@ -1,29 +1,18 @@
 /* ============================================
    SEARCH RESULTS & ANIME CARDS
+   Mobile-First Responsive Design
    ============================================ */
 
-/* Results Grid */
-#results {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 25px;
-  margin-bottom: 40px;
-  animation: fadeIn 0.8s ease-out 0.4s both;
-}
-
+/* ===== ANIMATIONS ===== */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(var(--space-8));
   }
   to {
     opacity: 1;
@@ -34,7 +23,7 @@
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(50px);
+    transform: translateX(var(--space-12));
   }
   to {
     opacity: 1;
@@ -43,29 +32,39 @@
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.6s ease-out forwards;
+  animation: fadeIn var(--duration-slow) ease-out forwards;
 }
 
 .animate-fadeInUp {
-  animation: fadeInUp 0.6s ease-out forwards;
+  animation: fadeInUp var(--duration-slow) ease-out forwards;
 }
 
-/* Skeleton Card */
+/* ===== RESULTS GRID - MOBILE FIRST ===== */
+#results {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
+  animation: fadeIn var(--duration-slow) ease-out 0.4s both;
+  width: 100%;
+}
+
+/* ===== SKELETON CARD ===== */
 .skeleton-card {
   background: var(--glass-bg);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
 .skeleton-img {
   width: 100%;
-  height: 220px;
+  aspect-ratio: 2/3;
 }
 
 .skeleton-text {
-  height: 20px;
-  margin: 10px;
-  border-radius: 4px;
+  height: var(--space-4);
+  margin: var(--space-3);
+  border-radius: var(--radius-sm);
 }
 
 .skeleton-text.short {
@@ -73,18 +72,19 @@
 }
 
 /* ============================================
-   ANIME CARDS
+   ANIME CARDS - MOBILE FIRST
    ============================================ */
 
 .anime-card {
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all var(--duration-normal) var(--ease-spring);
   border: 1px solid var(--glass-border);
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .anime-card::before {
@@ -94,84 +94,90 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--accent), #ff6b6b, #feca57);
+  background: var(--accent-gradient);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--duration-fast) var(--ease-smooth);
 }
 
 .anime-card:hover {
-  transform: translateY(-10px) scale(1.02);
+  transform: translateY(-4px) scale(1.02);
   border-color: var(--accent);
-  box-shadow: 0 20px 40px rgba(233, 69, 96, 0.3);
+  box-shadow: 0 12px 25px rgba(233, 69, 96, 0.25);
 }
 
 .anime-card:hover::before {
   opacity: 1;
 }
 
+.anime-card:active {
+  transform: translateY(-2px) scale(1.01);
+}
+
 .anime-card img {
   width: 100%;
-  height: 220px;
+  aspect-ratio: 2/3;
   object-fit: cover;
-  transition: transform 0.4s ease;
+  transition: transform var(--duration-slow) var(--ease-smooth);
 }
 
 .anime-card:hover img {
-  transform: scale(1.1);
+  transform: scale(1.08);
 }
 
 .anime-card-content {
-  padding: 15px;
+  padding: var(--space-3);
 }
 
 .anime-card h3 {
-  font-size: 1em;
+  font-size: var(--text-xs);
   text-align: center;
-  min-height: 50px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
   line-height: 1.4;
+  font-weight: 500;
 }
 
 .anime-card p {
   text-align: center;
   color: var(--text-light);
-  font-size: 0.85em;
+  font-size: var(--text-xs);
 }
 
-/* Status Badges */
+/* ===== STATUS BADGES ===== */
 .status-badges {
   display: flex;
-  gap: 5px;
-  justify-content: center;
   flex-wrap: wrap;
-  margin-top: 10px;
+  gap: var(--space-1);
+  justify-content: center;
+  margin-top: var(--space-2);
 }
 
 .badge {
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.7em;
-  font-weight: bold;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: calc(var(--text-xs) * 0.75);
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .badge-sub {
-  background: rgba(0, 210, 106, 0.2);
+  background: var(--success-bg);
   color: var(--success);
   border: 1px solid var(--success);
 }
 
 .badge-dub {
-  background: rgba(255, 193, 7, 0.2);
+  background: var(--warning-bg);
   color: var(--warning);
   border: 1px solid var(--warning);
 }
 
 .badge-raw {
-  background: rgba(23, 162, 184, 0.2);
+  background: var(--info-bg);
   color: var(--info);
   border: 1px solid var(--info);
 }
@@ -182,7 +188,7 @@
   border: 1px solid #ffcc00;
 }
 
-/* Tooltip */
+/* ===== TOOLTIP ===== */
 .tooltip {
   position: relative;
 }
@@ -190,64 +196,116 @@
 .tooltip::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + var(--space-2));
   left: 50%;
   transform: translateX(-50%);
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.9);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(0, 0, 0, 0.95);
   color: white;
-  font-size: 0.8em;
-  border-radius: 6px;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-md);
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.2s ease;
+  transition: all var(--duration-fast) var(--ease-smooth);
   pointer-events: none;
   z-index: 100;
+  box-shadow: var(--shadow-lg);
 }
 
 .tooltip:hover::after {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(-5px);
+  transform: translateX(-50%) translateY(-4px);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Small Mobile (320px - 479px) */
+@media (min-width: 320px) {
+  .anime-card h3 {
+    min-height: 38px;
+  }
+  
+  .anime-card p {
+    font-size: var(--text-xs);
+  }
+}
+
+/* Large Mobile (480px - 767px) */
+@media (min-width: 480px) {
   #results {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
   }
-
-  .anime-card img {
-    height: 180px;
+  
+  .anime-card-content {
+    padding: var(--space-3);
+  }
+  
+  .anime-card h3 {
+    font-size: var(--text-sm);
+    min-height: 42px;
   }
 }
 
-@media (max-width: 480px) {
-  #app {
-    padding: 15px;
+/* Tablet (768px - 1023px) */
+@media (min-width: 768px) {
+  #results {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--space-5);
   }
-
-  .search-container {
-    flex-direction: column;
-    align-items: stretch;
+  
+  .anime-card {
+    border-radius: var(--radius-xl);
   }
-
-  #searchInput {
-    min-width: 100%;
+  
+  .anime-card-content {
+    padding: var(--space-4);
   }
-
-  #searchBtn {
-    width: 100%;
+  
+  .anime-card h3 {
+    min-height: 46px;
+    font-size: var(--text-sm);
   }
-
-  #providerSelect {
-    width: 100%;
+  
+  .anime-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 30px rgba(233, 69, 96, 0.3);
   }
+  
+  .status-badges {
+    gap: var(--space-2);
+  }
+  
+  .badge {
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-3);
+  }
+}
 
-  .anime-card img {
-    height: 180px;
+/* Desktop (1024px - 1279px) */
+@media (min-width: 1024px) {
+  #results {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: var(--space-6);
+  }
+  
+  .anime-card-content {
+    padding: var(--space-4);
+  }
+  
+  .anime-card h3 {
+    min-height: 50px;
+  }
+}
+
+/* Large Desktop (1280px+) */
+@media (min-width: 1280px) {
+  #results {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
 }
 
